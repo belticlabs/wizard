@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.build.json",
+
+  "compilerOptions": {
+    "moduleResolution": "node16",
+    "module": "node16",
+    "types": ["node", "jest"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "declaration": true,
+    "outDir": "dist"
+  },
+  "include": [
+    "index.ts",
+    "bin.ts",
+    "src/**/*"
+  ],
+  "ts-node": {
+    "files": true
+  }
+}
