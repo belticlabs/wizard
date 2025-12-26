@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial changelog
+### Fixed
+- TypeScript type inference errors in command line argument parsing
+- Proper type assertions for yargs argv and environment variables
 
 ## [0.1.0] - 2024-12-XX
 
