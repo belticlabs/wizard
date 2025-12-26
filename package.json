@@ -1,6 +1,6 @@
 {
   "name": "@belticlabs/wizard",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "homepage": "https://github.com/belticlabs/wizard",
   "repository": "https://github.com/belticlabs/wizard",
   "description": "The Beltic wizard automatically analyzes agent codebases and generates credentials, manifests, and signatures",
