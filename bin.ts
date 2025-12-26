@@ -87,12 +87,12 @@ yargs(hideBin(process.argv))
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     async (argv) => {
       const envArgs = readEnvironment();
-      const envInstallDir = envArgs.installDir;
-      const envDebug = envArgs.debug;
+      const envInstallDir = envArgs.installDir as string | undefined;
+      const envDebug = envArgs.debug as boolean | undefined;
       
       let resolvedInstallDir: string;
       if (argv.installDir) {
-        const argInstallDir = argv.installDir;
+        const argInstallDir = argv.installDir as string;
         if (path.isAbsolute(argInstallDir)) {
           resolvedInstallDir = argInstallDir;
         } else {

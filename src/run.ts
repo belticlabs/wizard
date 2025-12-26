@@ -562,10 +562,7 @@ function updateGitignoreFile(installDir: string): void {
 /**
  * Update README with Beltic section
  */
-function updateReadmeFile(
-  installDir: string,
-  agentName: string,
-): void {
+function updateReadmeFile(installDir: string, agentName: string): void {
   if (hasBelticSection(installDir)) {
     return;
   }

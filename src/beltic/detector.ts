@@ -120,9 +120,7 @@ async function detectLanguage(
 /**
  * Detect deployment type
  */
-function detectDeploymentType(
-  installDir: string,
-): AgentInfo['deploymentType'] {
+function detectDeploymentType(installDir: string): AgentInfo['deploymentType'] {
   // Check for serverless
   const hasServerlessYml = fs.existsSync(
     path.join(installDir, 'serverless.yml'),
