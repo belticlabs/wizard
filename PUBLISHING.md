@@ -12,16 +12,51 @@ npx @belticlabs/wizard
 
 ### 1. npm Trusted Publishing (OIDC)
 
-**No personal access tokens needed!** This repository uses npm's Trusted Publishing feature, which uses OpenID Connect (OIDC) for secure, tokenless authentication.
+**No personal access tokens needed for automated publishing!** This repository uses npm's Trusted Publishing feature, which uses OpenID Connect (OIDC) for secure, tokenless authentication.
 
-#### Setup Steps:
+#### First-Time Setup (Package Doesn't Exist Yet)
 
-1. **Go to your package on npm:**
-   - Visit: https://www.npmjs.com/package/@belticlabs/wizard
-   - Or navigate to: https://www.npmjs.com/settings/belticlabs/packages
+**Important:** npm requires the package to exist before you can add a Trusted Publisher. Follow these steps:
+
+#### Step 1: Initial Manual Publish
+
+For the first publish only, you'll need to publish manually using npm authentication:
+
+1. **Login to npm:**
+   ```bash
+   npm login
+   # Or use an automation token temporarily
+   npm config set //registry.npmjs.org/:_authToken YOUR_TOKEN_HERE
+   ```
+
+2. **Build with API key:**
+   ```bash
+   # Set your Anthropic API key
+   export ANTHROPIC_API_KEY=your_key_here
+   
+   # Build with key injection
+   pnpm build:with-key
+   ```
+
+3. **Publish manually:**
+   ```bash
+   pnpm publish --access public
+   ```
+
+This creates the package on npm so you can configure Trusted Publishing.
+
+#### Step 2: Configure Trusted Publishing
+
+**Option A: Organization-Level (Recommended - Can be done before first publish)**
+
+You can add a Trusted Publisher at the organization level, which applies to all packages in the `@belticlabs` scope:
+
+1. **Go to organization settings:**
+   - Visit: https://www.npmjs.com/settings/belticlabs/trusted-publishers
+   - Or navigate: npmjs.com → Settings → Organizations → belticlabs → Trusted Publishers
 
 2. **Add a Trusted Publisher:**
-   - Click "Add Trusted Publisher" or go to: https://www.npmjs.com/settings/belticlabs/trusted-publishers
+   - Click "Add Trusted Publisher"
    - Select **GitHub** as the CI/CD provider
    - Enter the following details:
      - **Repository**: `belticlabs/wizard`
@@ -29,14 +64,27 @@ npx @belticlabs/wizard
      - **Environment name**: (leave empty for default)
    - Click "Add Trusted Publisher"
 
+**Option B: Package-Level (After first publish)**
+
+Alternatively, you can add it at the package level after the first publish:
+
+1. **Go to your package on npm:**
+   - Visit: https://www.npmjs.com/package/@belticlabs/wizard
+   - Click on "Trusted Publishers" tab
+
+2. **Add a Trusted Publisher:**
+   - Click "Add Trusted Publisher"
+   - Select **GitHub** as the CI/CD provider
+   - Enter the same details as above
+
 3. **Verify Setup:**
    - The workflow already has `id-token: write` permission configured
-   - No `NPM_TOKEN` secret is needed
-   - Publishing will automatically use OIDC authentication
+   - No `NPM_TOKEN` secret is needed for future publishes
+   - All future publishing will automatically use OIDC authentication
 
 **Benefits:**
-- ✅ No need to override 2FA on tokens
-- ✅ No long-lived tokens to manage
+- ✅ No need to override 2FA on tokens (after initial setup)
+- ✅ No long-lived tokens to manage (after initial setup)
 - ✅ Enhanced security with short-lived credentials
 - ✅ Automatic provenance attestation
 
@@ -131,10 +179,12 @@ wizard --help
 - Check npm registry: `npm view @belticlabs/wizard version`
 
 ### "Authentication failed" or "Unauthorized"
-- Verify Trusted Publishing is configured on npm
+- **First publish:** You must publish manually once before Trusted Publishing can be configured (see "First-Time Setup" above)
+- **After first publish:** Verify Trusted Publishing is configured on npm
 - Check that the repository name matches exactly: `belticlabs/wizard`
 - Ensure workflow filename is correct: `.github/workflows/publish.yml`
 - Verify `id-token: write` permission is set in the workflow (already configured)
+- If package doesn't exist yet, you'll need to do the initial manual publish first
 
 ### "API key not injected"
 - Check `ANTHROPIC_API_KEY` secret exists in GitHub
