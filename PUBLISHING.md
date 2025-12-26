@@ -10,14 +10,39 @@ npx @belticlabs/wizard
 
 ## Setup Requirements
 
-### 1. GitHub Secrets
+### 1. npm Trusted Publishing (OIDC)
 
-Add these secrets to your GitHub repository settings (`Settings > Secrets and variables > Actions`):
+**No personal access tokens needed!** This repository uses npm's Trusted Publishing feature, which uses OpenID Connect (OIDC) for secure, tokenless authentication.
 
-- **`NPM_TOKEN`**: npm authentication token with publish permissions
-  - Create at: https://www.npmjs.com/settings/belticlabs/tokens
-  - Token type: Automation token
-  - Permissions: Read and Publish
+#### Setup Steps:
+
+1. **Go to your package on npm:**
+   - Visit: https://www.npmjs.com/package/@belticlabs/wizard
+   - Or navigate to: https://www.npmjs.com/settings/belticlabs/packages
+
+2. **Add a Trusted Publisher:**
+   - Click "Add Trusted Publisher" or go to: https://www.npmjs.com/settings/belticlabs/trusted-publishers
+   - Select **GitHub** as the CI/CD provider
+   - Enter the following details:
+     - **Repository**: `belticlabs/wizard`
+     - **Workflow filename**: `.github/workflows/publish.yml`
+     - **Environment name**: (leave empty for default)
+   - Click "Add Trusted Publisher"
+
+3. **Verify Setup:**
+   - The workflow already has `id-token: write` permission configured
+   - No `NPM_TOKEN` secret is needed
+   - Publishing will automatically use OIDC authentication
+
+**Benefits:**
+- ✅ No need to override 2FA on tokens
+- ✅ No long-lived tokens to manage
+- ✅ Enhanced security with short-lived credentials
+- ✅ Automatic provenance attestation
+
+### 2. GitHub Secrets
+
+Add this secret to your GitHub repository settings (`Settings > Secrets and variables > Actions`):
 
 - **`ANTHROPIC_API_KEY`**: Anthropic API key to be compiled into the wizard
   - This allows Beltic to cover API costs for users
@@ -66,11 +91,12 @@ pnpm publish --access public
 
 ## Version Management
 
-The workflow uses `PostHog/check-package-version@v2` to detect version changes. This action:
+The workflow automatically:
 
 - Compares `package.json` version with published npm version
 - Only publishes if the committed version is newer
 - Prevents duplicate publishes
+- Handles first-time publishing gracefully
 
 ## API Key Security
 
@@ -104,9 +130,11 @@ wizard --help
 - Ensure version in `package.json` is higher than npm published version
 - Check npm registry: `npm view @belticlabs/wizard version`
 
-### "NPM_TOKEN not found"
-- Add `NPM_TOKEN` secret to GitHub repository
-- Ensure token has publish permissions
+### "Authentication failed" or "Unauthorized"
+- Verify Trusted Publishing is configured on npm
+- Check that the repository name matches exactly: `belticlabs/wizard`
+- Ensure workflow filename is correct: `.github/workflows/publish.yml`
+- Verify `id-token: write` permission is set in the workflow (already configured)
 
 ### "API key not injected"
 - Check `ANTHROPIC_API_KEY` secret exists in GitHub
