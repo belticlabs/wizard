@@ -3,7 +3,7 @@ import {
   type OAuthConfig,
   type OAuthTokenResponse,
 } from '../utils/oauth';
-import { KYA_AUTH_URL, KYA_CLIENT_ID, KYA_API_URL } from './constants';
+import { KYA_AUTH_URL, KYA_CLIENT_ID } from './constants';
 
 /**
  * KYA Platform OAuth Configuration Helper

@@ -17,7 +17,6 @@ import {
   generateBelticYaml,
   writeBelticYaml,
   belticYamlExists,
-  readBelticYaml,
   runBelticInit,
   runBelticFingerprint,
   runBelticKeygen,
@@ -79,7 +78,7 @@ async function authenticateWithKya(): Promise<StoredCredentials> {
 
   if (clack.isCancel(shouldLogin) || !shouldLogin) {
     clack.log.error('Authentication is required to use the Beltic wizard.');
-    await abort();
+    abort();
     throw new Error('Authentication cancelled');
   }
 
@@ -128,7 +127,7 @@ async function authenticateWithKya(): Promise<StoredCredentials> {
       )}`,
     );
 
-    await abort();
+    abort();
     throw error;
   }
 }
@@ -178,11 +177,11 @@ export async function runWizard(options: WizardOptions): Promise<void> {
     }
 
     // Step 8: Update .gitignore
-    await updateGitignoreFile(installDir);
+    updateGitignoreFile(installDir);
 
     // Step 9: Update README (unless skipped)
     if (!options.skipReadme) {
-      await updateReadmeFile(installDir, detection.agentName);
+      updateReadmeFile(installDir, detection.agentName);
     }
 
     // Final summary
@@ -247,9 +246,11 @@ async function checkExistingFiles(
     if (hasKeys) clack.log.info(`  • ${chalk.cyan('.beltic/')} (keys)`);
 
     // Check if code has changed (compare fingerprint timestamp vs source files)
-    const manifestMtime = hasManifest
+    // Note: This could be used for future fingerprint comparison logic
+    // Currently not used but kept for potential future use
+    void (hasManifest
       ? fs.statSync(path.join(installDir, 'agent-manifest.json')).mtime
-      : null;
+      : null);
 
     // Ask user what to do
     const action = await clack.select({
@@ -322,7 +323,7 @@ async function ensureBelticCli(): Promise<void> {
   }
 
   spinner.start('Installing Beltic CLI...');
-  const success = await installBelticCli();
+  const success = installBelticCli();
 
   if (!success) {
     spinner.stop('Installation failed');
@@ -547,7 +548,7 @@ async function generateKeysAndSign(
 /**
  * Update .gitignore with Beltic entries
  */
-async function updateGitignoreFile(installDir: string): Promise<void> {
+function updateGitignoreFile(installDir: string): void {
   if (hasBelticEntries(installDir)) {
     return;
   }
@@ -561,10 +562,10 @@ async function updateGitignoreFile(installDir: string): Promise<void> {
 /**
  * Update README with Beltic section
  */
-async function updateReadmeFile(
+function updateReadmeFile(
   installDir: string,
   agentName: string,
-): Promise<void> {
+): void {
   if (hasBelticSection(installDir)) {
     return;
   }

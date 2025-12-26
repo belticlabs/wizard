@@ -62,7 +62,7 @@ function isHomebrewAvailable(): boolean {
  * Install Beltic CLI
  * Tries Homebrew first, then falls back to curl installer
  */
-export async function installBelticCli(): Promise<boolean> {
+export function installBelticCli(): boolean {
   const platform = os.platform();
 
   if (platform === 'darwin' || platform === 'linux') {
@@ -125,11 +125,11 @@ export async function runBelticCommand(
     let stdout = '';
     let stderr = '';
 
-    proc.stdout.on('data', (data) => {
+    proc.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
     });
 
-    proc.stderr.on('data', (data) => {
+    proc.stderr.on('data', (data: Buffer) => {
       stderr += data.toString();
     });
 

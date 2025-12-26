@@ -371,7 +371,7 @@ export async function performOAuthFlow(
       );
     }
 
-    await abort();
+    abort();
     throw error;
   }
 }

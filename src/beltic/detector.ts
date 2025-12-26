@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import fg from 'fast-glob';
-import type { AgentInfo, AgentTool } from '../utils/types';
+import type { AgentInfo } from '../utils/types';
 import {
   DEFAULT_EXCLUDE_PATTERNS,
   INCLUDE_PATTERNS_BY_LANGUAGE,
@@ -32,14 +32,14 @@ export async function detectCodebase(
   installDir: string,
 ): Promise<DetectionResult> {
   const language = await detectLanguage(installDir);
-  const deploymentType = await detectDeploymentType(installDir);
-  const modelProvider = await detectModelProvider(installDir, language);
-  const { name, version, description } = await detectAgentMetadata(
+  const deploymentType = detectDeploymentType(installDir);
+  const modelProvider = detectModelProvider(installDir, language);
+  const { name, version, description } = detectAgentMetadata(
     installDir,
     language,
   );
-  const entryPoints = await detectEntryPoints(installDir, language);
-  const packageManager = await detectPackageManager(installDir);
+  const entryPoints = detectEntryPoints(installDir, language);
+  const packageManager = detectPackageManager(installDir);
 
   return {
     language,
@@ -120,9 +120,9 @@ async function detectLanguage(
 /**
  * Detect deployment type
  */
-async function detectDeploymentType(
+function detectDeploymentType(
   installDir: string,
-): Promise<AgentInfo['deploymentType']> {
+): AgentInfo['deploymentType'] {
   // Check for serverless
   const hasServerlessYml = fs.existsSync(
     path.join(installDir, 'serverless.yml'),
@@ -131,7 +131,6 @@ async function detectDeploymentType(
     path.join(installDir, 'serverless.yaml'),
   );
   const hasSamTemplate = fs.existsSync(path.join(installDir, 'template.yaml'));
-  const hasVercelJson = fs.existsSync(path.join(installDir, 'vercel.json'));
 
   if (hasServerlessYml || hasServerlessYaml || hasSamTemplate) {
     return 'serverless';
@@ -142,7 +141,7 @@ async function detectDeploymentType(
   const hasPnpmWorkspace = fs.existsSync(
     path.join(installDir, 'pnpm-workspace.yaml'),
   );
-  const hasWorkspaces = await checkPackageJsonWorkspaces(installDir);
+  const hasWorkspaces = checkPackageJsonWorkspaces(installDir);
 
   if (hasLernaJson || hasPnpmWorkspace || hasWorkspaces) {
     return 'monorepo';
@@ -163,20 +162,21 @@ async function detectDeploymentType(
 /**
  * Detect AI model provider from dependencies
  */
-async function detectModelProvider(
+function detectModelProvider(
   installDir: string,
   language: AgentInfo['language'],
-): Promise<AgentInfo['modelProvider'] | undefined> {
+): AgentInfo['modelProvider'] | undefined {
   if (language === 'typescript' || language === 'javascript') {
     const packageJsonPath = path.join(installDir, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
       try {
-        const packageJson = JSON.parse(
-          fs.readFileSync(packageJsonPath, 'utf-8'),
-        );
-        const deps = {
-          ...packageJson.dependencies,
-          ...packageJson.devDependencies,
+        const packageJson: {
+          dependencies?: Record<string, string>;
+          devDependencies?: Record<string, string>;
+        } = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        const deps: Record<string, string> = {
+          ...(packageJson.dependencies || {}),
+          ...(packageJson.devDependencies || {}),
         };
 
         if (deps['@anthropic-ai/sdk'] || deps['anthropic']) {
@@ -238,10 +238,10 @@ async function detectModelProvider(
 /**
  * Detect agent metadata from package.json or pyproject.toml
  */
-async function detectAgentMetadata(
+function detectAgentMetadata(
   installDir: string,
-  language: AgentInfo['language'],
-): Promise<{ name: string; version?: string; description?: string }> {
+  _language: AgentInfo['language'],
+): { name: string; version?: string; description?: string } {
   // Try package.json
   const packageJsonPath = path.join(installDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
@@ -283,10 +283,10 @@ async function detectAgentMetadata(
 /**
  * Detect entry points for the agent
  */
-async function detectEntryPoints(
+function detectEntryPoints(
   installDir: string,
   language: AgentInfo['language'],
-): Promise<string[]> {
+): string[] {
   const entryPoints: string[] = [];
 
   if (language === 'typescript' || language === 'javascript') {
@@ -352,9 +352,7 @@ async function detectEntryPoints(
 /**
  * Check if package.json has workspaces defined
  */
-async function checkPackageJsonWorkspaces(
-  installDir: string,
-): Promise<boolean> {
+function checkPackageJsonWorkspaces(installDir: string): boolean {
   const packageJsonPath = path.join(installDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {
@@ -370,9 +368,9 @@ async function checkPackageJsonWorkspaces(
 /**
  * Detect package manager
  */
-async function detectPackageManager(
+function detectPackageManager(
   installDir: string,
-): Promise<DetectionResult['packageManager'] | undefined> {
+): DetectionResult['packageManager'] | undefined {
   if (fs.existsSync(path.join(installDir, 'pnpm-lock.yaml'))) {
     return 'pnpm';
   }
@@ -406,7 +404,7 @@ async function detectPackageManager(
 export async function getSourceFiles(
   installDir: string,
   language: AgentInfo['language'],
-  limit: number = 20,
+  limit = 20,
 ): Promise<string[]> {
   const patterns =
     INCLUDE_PATTERNS_BY_LANGUAGE[language] ||
@@ -449,7 +447,7 @@ export async function getSourceFiles(
 export function readFileContent(
   installDir: string,
   filePath: string,
-  maxSize: number = 50000,
+  maxSize = 50000,
 ): string | null {
   const fullPath = path.join(installDir, filePath);
   try {

@@ -10,7 +10,7 @@ const BELTIC_SECTION_MARKER = '<!-- BELTIC_CREDENTIALS -->';
 /**
  * Generate Beltic section content for README
  */
-export function generateBelticSection(agentName: string): string {
+export function generateBelticSection(_agentName: string): string {
   return `
 ${BELTIC_SECTION_MARKER}
 ## Agent Credentials

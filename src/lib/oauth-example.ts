@@ -23,6 +23,7 @@ export async function exampleWorkOSAuth() {
       signup: false, // Set to true for signup flow
     });
 
+    // eslint-disable-next-line no-console
     console.log('Access token:', tokenResponse.access_token);
 
     // Use the access token to make API calls
@@ -31,6 +32,7 @@ export async function exampleWorkOSAuth() {
 
     return tokenResponse;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('OAuth failed:', error);
     throw error;
   }
@@ -51,14 +53,17 @@ export async function exampleKyaAuth() {
 
     // Fetch current developer data
     const developer = await fetchDeveloperData(accessToken, KYA_API_URL);
+    // eslint-disable-next-line no-console
     console.log('Developer:', developer);
 
     // List developer's agents
     const agents = await listAgents(accessToken, KYA_API_URL, developer.id);
+    // eslint-disable-next-line no-console
     console.log('Agents:', agents);
 
     return { developer, agents, token: accessToken };
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('KYA OAuth failed:', error);
     throw error;
   }

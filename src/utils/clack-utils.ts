@@ -12,10 +12,9 @@ import {
   packageManagers,
 } from './package-manager';
 import type { WizardOptions } from './types';
-import { ISSUES_URL } from '../lib/constants';
 import clack from './clack';
 
-export async function abort(message?: string, status?: number): Promise<never> {
+export function abort(message?: string, status?: number): never {
   clack.outro(message ?? 'Wizard setup cancelled.');
   return process.exit(status ?? 1);
 }
@@ -121,7 +120,7 @@ export async function ensurePackageIsInstalled(
     );
 
     if (!continueWithoutPackage) {
-      await abort(undefined, 0);
+      abort(undefined, 0);
     }
   }
 }
@@ -162,7 +161,7 @@ export async function updatePackageDotJson(
     );
   } catch {
     clack.log.error(`Unable to update your package.json.`);
-    await abort();
+    abort();
   }
 }
 

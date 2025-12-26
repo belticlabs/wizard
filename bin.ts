@@ -84,14 +84,15 @@ yargs(hideBin(process.argv))
         },
       });
     },
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     async (argv) => {
       const envArgs = readEnvironment();
-      const envInstallDir = envArgs.installDir as string | undefined;
-      const envDebug = envArgs.debug as boolean | undefined;
+      const envInstallDir = envArgs.installDir;
+      const envDebug = envArgs.debug;
       
       let resolvedInstallDir: string;
       if (argv.installDir) {
-        const argInstallDir = argv.installDir as string;
+        const argInstallDir = argv.installDir;
         if (path.isAbsolute(argInstallDir)) {
           resolvedInstallDir = argInstallDir;
         } else {
@@ -111,21 +112,22 @@ yargs(hideBin(process.argv))
       // Default key allows Beltic to cover costs on behalf of users
       const { DEFAULT_ANTHROPIC_API_KEY } = await import('./src/lib/constants.js');
       const anthropicKey =
-        (argv['anthropic-key'] as string) ||
+        argv['anthropic-key'] ||
         process.env.ANTHROPIC_API_KEY ||
         DEFAULT_ANTHROPIC_API_KEY;
 
       const wizardOptions: WizardOptions = {
-        debug: (argv.debug as boolean) ?? envDebug ?? false,
+        debug: argv.debug ?? envDebug ?? false,
         installDir: resolvedInstallDir,
         anthropicKey,
-        skipSign: (argv['skip-sign'] as boolean) ?? false,
-        skipReadme: (argv['skip-readme'] as boolean) ?? false,
-        force: (argv.force as boolean) ?? false,
-        skipValidation: (argv['skip-validation'] as boolean) ?? false,
+        skipSign: argv['skip-sign'] ?? false,
+        skipReadme: argv['skip-readme'] ?? false,
+        force: argv.force ?? false,
+        skipValidation: argv['skip-validation'] ?? false,
       };
 
-      void runWizard(wizardOptions);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      runWizard(wizardOptions);
     },
   )
   .help()

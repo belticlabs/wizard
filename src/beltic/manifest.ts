@@ -447,9 +447,10 @@ function mergeAnalysisIntoManifest(
     result.systemConfigFingerprint &&
     typeof result.systemConfigFingerprint === 'string'
   ) {
-    result.systemConfigFingerprint = (
-      result.systemConfigFingerprint as string
-    ).replace('sha256:', '');
+    result.systemConfigFingerprint = result.systemConfigFingerprint.replace(
+      'sha256:',
+      '',
+    );
   }
 
   return result;
