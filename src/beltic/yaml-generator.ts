@@ -49,7 +49,7 @@ async function generateWithLLM(
 
   // Get source files for analysis
   const sourceFiles = await getSourceFiles(installDir, detection.language, 10);
-  
+
   // Build file contents for context
   const fileContents: { path: string; content: string }[] = [];
   for (const file of sourceFiles) {

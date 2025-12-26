@@ -190,7 +190,7 @@ export async function runWizard(options: WizardOptions): Promise<void> {
   } catch (error) {
     clack.log.error(`An error occurred: ${(error as Error).message}`);
     debug('Full error:', error);
-    
+
     clack.outro(
       `If you need help, please open an issue: ${chalk.cyan(ISSUES_URL)}`,
     );
@@ -215,8 +215,12 @@ async function checkExistingFiles(
   options: WizardOptions,
 ): Promise<ExistingFiles> {
   const hasYaml = belticYamlExists(installDir);
-  const hasManifest = fs.existsSync(path.join(installDir, 'agent-manifest.json'));
-  const hasCredential = fs.existsSync(path.join(installDir, 'agent-credential.jwt'));
+  const hasManifest = fs.existsSync(
+    path.join(installDir, 'agent-manifest.json'),
+  );
+  const hasCredential = fs.existsSync(
+    path.join(installDir, 'agent-credential.jwt'),
+  );
   const hasKeys = findPrivateKey(installDir) !== null;
 
   const existing: ExistingFiles = {
@@ -238,7 +242,8 @@ async function checkExistingFiles(
     clack.log.info('Found existing Beltic files:');
     if (hasYaml) clack.log.info(`  • ${chalk.cyan('.beltic.yaml')}`);
     if (hasManifest) clack.log.info(`  • ${chalk.cyan('agent-manifest.json')}`);
-    if (hasCredential) clack.log.info(`  • ${chalk.cyan('agent-credential.jwt')}`);
+    if (hasCredential)
+      clack.log.info(`  • ${chalk.cyan('agent-credential.jwt')}`);
     if (hasKeys) clack.log.info(`  • ${chalk.cyan('.beltic/')} (keys)`);
 
     // Check if code has changed (compare fingerprint timestamp vs source files)
@@ -344,8 +349,12 @@ async function detectAndAnalyzeCodebase(installDir: string) {
   spinner.stop('Codebase analysis complete');
 
   clack.log.info(
-    `Detected: ${chalk.cyan(detection.language)} ${detection.deploymentType} agent` +
-      (detection.modelProvider ? ` using ${chalk.cyan(detection.modelProvider)}` : ''),
+    `Detected: ${chalk.cyan(detection.language)} ${
+      detection.deploymentType
+    } agent` +
+      (detection.modelProvider
+        ? ` using ${chalk.cyan(detection.modelProvider)}`
+        : ''),
   );
   clack.log.info(`Agent name: ${chalk.cyan(detection.agentName)}`);
 
@@ -446,7 +455,7 @@ async function generateKeysAndSign(
   detection: DetectionResult,
 ): Promise<void> {
   const agentName = detection.agentName;
-  
+
   // Check if keys already exist
   let privateKey = findPrivateKey(installDir);
 
@@ -481,7 +490,7 @@ async function generateKeysAndSign(
 
   // Use LLM to analyze codebase and fill in manifest fields intelligently
   clack.log.step('Analyzing codebase to fill manifest fields...');
-  
+
   try {
     await analyzeAndPatchManifest(
       installDir,
@@ -517,14 +526,16 @@ async function generateKeysAndSign(
   if (!signResult.success) {
     signSpinner.stop('Failed to sign credential');
     clack.log.error(`Error: ${signResult.stderr}`);
-    
+
     // Suggest using --skip-validation for local testing
     if (signResult.stderr.includes('schema validation failed')) {
       clack.log.warn(
-        chalk.yellow('\nTip: For local testing, you can use --skip-validation to skip schema validation.')
+        chalk.yellow(
+          '\nTip: For local testing, you can use --skip-validation to skip schema validation.',
+        ),
       );
     }
-    
+
     throw new Error('beltic sign failed');
   }
 
@@ -603,7 +614,9 @@ function printSummary(
 
   if (options.skipValidation) {
     nextSteps.unshift(
-      chalk.yellow('⚠ Signed without validation - credential may not be valid for production'),
+      chalk.yellow(
+        '⚠ Signed without validation - credential may not be valid for production',
+      ),
     );
   }
 

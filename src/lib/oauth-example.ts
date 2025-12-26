@@ -1,9 +1,9 @@
 /**
  * OAuth Usage Examples
- * 
+ *
  * This file demonstrates how to use the OAuth utilities
  * with WorkOS or the KYA platform.
- * 
+ *
  * NOTE: This is an example file - not meant to be imported directly.
  * Copy the patterns you need into your actual implementation.
  */
@@ -66,7 +66,7 @@ export async function exampleKyaAuth() {
 
 /**
  * Example: Custom OAuth provider
- * 
+ *
  * If you're using a different OAuth provider, you can use
  * performOAuthFlow directly with a custom configuration.
  */
@@ -85,4 +85,3 @@ export async function exampleCustomOAuth() {
 
   return tokenResponse;
 }
-

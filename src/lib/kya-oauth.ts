@@ -1,9 +1,13 @@
-import { performOAuthFlow, type OAuthConfig, type OAuthTokenResponse } from '../utils/oauth';
+import {
+  performOAuthFlow,
+  type OAuthConfig,
+  type OAuthTokenResponse,
+} from '../utils/oauth';
 import { KYA_AUTH_URL, KYA_CLIENT_ID, KYA_API_URL } from './constants';
 
 /**
  * KYA Platform OAuth Configuration Helper
- * 
+ *
  * This helper configures OAuth for the KYA (Know Your Agent) platform.
  * The KYA platform can use WorkOS or any OAuth 2.0 provider.
  */
@@ -25,14 +29,14 @@ export interface KyaOAuthConfig {
 
 /**
  * Get KYA OAuth configuration
- * 
+ *
  * KYA platform OAuth endpoints are typically:
  * - Authorization: {KYA_AUTH_URL}/oauth/authorize
  * - Token: {KYA_AUTH_URL}/oauth/token
  */
 function getKyaOAuthConfig(config: KyaOAuthConfig = {}): OAuthConfig {
   const clientId = config.clientId || KYA_CLIENT_ID;
-  
+
   if (!clientId) {
     throw new Error(
       'KYA client ID is required. Set KYA_CLIENT_ID environment variable.',
@@ -60,7 +64,7 @@ function getKyaOAuthConfig(config: KyaOAuthConfig = {}): OAuthConfig {
 
 /**
  * Perform KYA platform OAuth flow
- * 
+ *
  * This is a convenience wrapper around performOAuthFlow that
  * configures it specifically for the KYA platform.
  */
@@ -70,4 +74,3 @@ export async function performKyaOAuth(
   const oauthConfig = getKyaOAuthConfig(config);
   return performOAuthFlow(oauthConfig);
 }
-

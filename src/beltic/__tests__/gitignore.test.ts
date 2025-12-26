@@ -30,10 +30,7 @@ describe('gitignore', () => {
     });
 
     it('should append to existing .gitignore', () => {
-      fs.writeFileSync(
-        path.join(testDir, '.gitignore'),
-        'node_modules/\n',
-      );
+      fs.writeFileSync(path.join(testDir, '.gitignore'), 'node_modules/\n');
 
       const updated = updateGitignore(testDir);
 
@@ -83,10 +80,7 @@ describe('gitignore', () => {
     });
 
     it('should return true when .gitignore has Beltic comment', () => {
-      fs.writeFileSync(
-        path.join(testDir, '.gitignore'),
-        '# Beltic entries\n',
-      );
+      fs.writeFileSync(path.join(testDir, '.gitignore'), '# Beltic entries\n');
 
       expect(hasBelticEntries(testDir)).toBe(true);
     });

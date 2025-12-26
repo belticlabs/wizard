@@ -68,10 +68,7 @@ description = "A test Python agent"`,
     });
 
     it('should detect serverless deployment type', async () => {
-      fs.writeFileSync(
-        path.join(testDir, 'serverless.yml'),
-        'service: test',
-      );
+      fs.writeFileSync(path.join(testDir, 'serverless.yml'), 'service: test');
       fs.writeFileSync(
         path.join(testDir, 'package.json'),
         JSON.stringify({ name: 'test' }),
@@ -92,10 +89,7 @@ description = "A test Python agent"`,
           },
         }),
       );
-      fs.writeFileSync(
-        path.join(testDir, 'tsconfig.json'),
-        JSON.stringify({}),
-      );
+      fs.writeFileSync(path.join(testDir, 'tsconfig.json'), JSON.stringify({}));
 
       const result = await detectCodebase(testDir);
 
@@ -112,10 +106,7 @@ description = "A test Python agent"`,
           },
         }),
       );
-      fs.writeFileSync(
-        path.join(testDir, 'tsconfig.json'),
-        JSON.stringify({}),
-      );
+      fs.writeFileSync(path.join(testDir, 'tsconfig.json'), JSON.stringify({}));
 
       const result = await detectCodebase(testDir);
 

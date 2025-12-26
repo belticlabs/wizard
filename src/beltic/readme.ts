@@ -57,7 +57,7 @@ ${BELTIC_SECTION_MARKER}
  */
 export function updateReadme(installDir: string, agentName: string): boolean {
   const readmePath = findReadme(installDir);
-  
+
   if (!readmePath) {
     // Create a new README if none exists
     const newContent = `# ${agentName}
@@ -74,10 +74,15 @@ ${generateBelticSection(agentName)}
   if (content.includes(BELTIC_SECTION_MARKER)) {
     // Replace existing section
     const sectionRegex = new RegExp(
-      `${escapeRegExp(BELTIC_SECTION_MARKER)}[\\s\\S]*?${escapeRegExp(BELTIC_SECTION_MARKER)}`,
+      `${escapeRegExp(BELTIC_SECTION_MARKER)}[\\s\\S]*?${escapeRegExp(
+        BELTIC_SECTION_MARKER,
+      )}`,
       'g',
     );
-    content = content.replace(sectionRegex, generateBelticSection(agentName).trim());
+    content = content.replace(
+      sectionRegex,
+      generateBelticSection(agentName).trim(),
+    );
   } else {
     // Add new section at the end
     if (!content.endsWith('\n')) {
@@ -123,7 +128,10 @@ export function hasBelticSection(installDir: string): boolean {
   }
 
   const content = fs.readFileSync(readmePath, 'utf-8');
-  return content.includes(BELTIC_SECTION_MARKER) || content.includes('## Agent Credentials');
+  return (
+    content.includes(BELTIC_SECTION_MARKER) ||
+    content.includes('## Agent Credentials')
+  );
 }
 
 /**

@@ -249,14 +249,14 @@ function generateState(): string {
 
 /**
  * Perform OAuth 2.0 Authorization Code flow with PKCE
- * 
+ *
  * This is a generic OAuth implementation that works with any OAuth 2.0 provider
  * that supports PKCE (Proof Key for Code Exchange), including:
  * - WorkOS
  * - Auth0
  * - Ory
  * - Any OAuth 2.0 provider with PKCE support
- * 
+ *
  * @param config OAuth configuration
  * @returns OAuth token response with access token
  */
@@ -291,7 +291,9 @@ export async function performOAuthFlow(
     : undefined;
   const localLoginUrl = `http://localhost:${OAUTH_PORT}/authorize`;
 
-  const urlToOpen = config.signupUrl ? localSignupUrl || localLoginUrl : localLoginUrl;
+  const urlToOpen = config.signupUrl
+    ? localSignupUrl || localLoginUrl
+    : localLoginUrl;
   const appName = config.appName || 'Beltic';
 
   // Pass expected state to callback server for validation
@@ -342,12 +344,12 @@ export async function performOAuthFlow(
     const error = e instanceof Error ? e : new Error('Unknown error');
 
     if (error.message.includes('timeout')) {
-      clack.log.error('Authorization timed out after 5 minutes. Please try again.');
+      clack.log.error(
+        'Authorization timed out after 5 minutes. Please try again.',
+      );
     } else if (error.message.includes('State mismatch')) {
       clack.log.error(
-        `${chalk.red('Security error:')}\n\n${
-          error.message
-        }\n\n${chalk.dim(
+        `${chalk.red('Security error:')}\n\n${error.message}\n\n${chalk.dim(
           'This may indicate a security issue. Please try again.',
         )}`,
       );
@@ -373,4 +375,3 @@ export async function performOAuthFlow(
     throw error;
   }
 }
-

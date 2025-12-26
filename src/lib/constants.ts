@@ -52,22 +52,25 @@ export const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 
 // Credential storage paths
 export const BELTIC_CONFIG_DIR = path.join(os.homedir(), '.beltic');
-export const CREDENTIALS_FILE = path.join(BELTIC_CONFIG_DIR, 'credentials.json');
+export const CREDENTIALS_FILE = path.join(
+  BELTIC_CONFIG_DIR,
+  'credentials.json',
+);
 
 // Event name for analytics (if we add analytics later)
 export const WIZARD_INTERACTION_EVENT_NAME = 'beltic wizard interaction';
 
 /**
  * Placeholder issuer DID for self-signed credentials.
- * 
+ *
  * TODO: Replace with actual platform-issued DIDs once the Beltic platform is ready.
- * 
+ *
  * In production:
  * - Developer registers on Beltic platform
  * - Platform issues a developer DID (did:beltic:dev:xxx)
  * - Developer uses their DID to sign agent credentials
  * - Verifiers can resolve the DID to check developer identity
- * 
+ *
  * For now, this placeholder allows local testing and development.
  */
 export const PLACEHOLDER_ISSUER_DID = 'did:beltic:wizard:self-signed';

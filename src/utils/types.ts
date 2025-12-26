@@ -53,7 +53,12 @@ export type AgentInfo = {
   /**
    * Deployment type
    */
-  deploymentType: 'standalone' | 'monorepo' | 'embedded' | 'plugin' | 'serverless';
+  deploymentType:
+    | 'standalone'
+    | 'monorepo'
+    | 'embedded'
+    | 'plugin'
+    | 'serverless';
 
   /**
    * AI model provider detected in the codebase

@@ -76,7 +76,9 @@ export async function installBelticCli(): Promise<boolean> {
         });
         return true;
       } catch (error) {
-        clack.log.warn('Homebrew installation failed, trying curl installer...');
+        clack.log.warn(
+          'Homebrew installation failed, trying curl installer...',
+        );
         debug('Homebrew install error:', error);
       }
     }

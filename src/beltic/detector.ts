@@ -49,7 +49,9 @@ export async function detectCodebase(
     agentVersion: version,
     agentDescription: description,
     entryPoints,
-    includePatterns: INCLUDE_PATTERNS_BY_LANGUAGE[language] || INCLUDE_PATTERNS_BY_LANGUAGE.other,
+    includePatterns:
+      INCLUDE_PATTERNS_BY_LANGUAGE[language] ||
+      INCLUDE_PATTERNS_BY_LANGUAGE.other,
     excludePatterns: DEFAULT_EXCLUDE_PATTERNS,
     packageManager,
   };
@@ -203,7 +205,10 @@ async function detectModelProvider(
       if (content.includes('openai')) {
         return 'openai';
       }
-      if (content.includes('google-generativeai') || content.includes('google-cloud-aiplatform')) {
+      if (
+        content.includes('google-generativeai') ||
+        content.includes('google-cloud-aiplatform')
+      ) {
         return 'google';
       }
     }
@@ -218,7 +223,10 @@ async function detectModelProvider(
       if (content.includes('openai')) {
         return 'openai';
       }
-      if (content.includes('google-generativeai') || content.includes('google-cloud-aiplatform')) {
+      if (
+        content.includes('google-generativeai') ||
+        content.includes('google-cloud-aiplatform')
+      ) {
         return 'google';
       }
     }
@@ -238,9 +246,7 @@ async function detectAgentMetadata(
   const packageJsonPath = path.join(installDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const packageJson = JSON.parse(
-        fs.readFileSync(packageJsonPath, 'utf-8'),
-      );
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       return {
         name: packageJson.name || path.basename(installDir),
         version: packageJson.version,
@@ -352,9 +358,7 @@ async function checkPackageJsonWorkspaces(
   const packageJsonPath = path.join(installDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const packageJson = JSON.parse(
-        fs.readFileSync(packageJsonPath, 'utf-8'),
-      );
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       return !!packageJson.workspaces;
     } catch {
       return false;
@@ -407,7 +411,7 @@ export async function getSourceFiles(
   const patterns =
     INCLUDE_PATTERNS_BY_LANGUAGE[language] ||
     INCLUDE_PATTERNS_BY_LANGUAGE.other;
-  
+
   const files = await fg(patterns, {
     cwd: installDir,
     ignore: DEFAULT_EXCLUDE_PATTERNS,

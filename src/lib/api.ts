@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 /**
  * Generic API client for Beltic Console
- * 
+ *
  * This is used to interact with the console API endpoints
  * after OAuth authentication via WorkOS.
  */
@@ -24,9 +24,13 @@ export class ApiError extends Error {
  */
 function handleApiError(error: unknown, operation: string): ApiError {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<{ detail?: string; message?: string }>;
+    const axiosError = error as AxiosError<{
+      detail?: string;
+      message?: string;
+    }>;
     const status = axiosError.response?.status;
-    const detail = axiosError.response?.data?.detail || axiosError.response?.data?.message;
+    const detail =
+      axiosError.response?.data?.detail || axiosError.response?.data?.message;
     const endpoint = axiosError.config?.url;
 
     if (status === 401) {
@@ -102,7 +106,7 @@ export async function apiRequest<T>(
 
 /**
  * Console API Developer Response Schema (JSON:API format)
- * 
+ *
  * The console returns developers in JSON:API format with nested attributes
  */
 const DeveloperAttributesSchema = z.object({
@@ -113,10 +117,12 @@ const DeveloperAttributesSchema = z.object({
   business_email: z.string().email(),
   business_phone: z.string().optional(),
   security_email: z.string().optional(),
-  incorporation_jurisdiction: z.object({
-    country: z.string(),
-    region: z.string().optional(),
-  }).optional(),
+  incorporation_jurisdiction: z
+    .object({
+      country: z.string(),
+      region: z.string().optional(),
+    })
+    .optional(),
   kyb_tier: z.string().optional(),
   kyc_status: z.string().optional(),
   kyb_status: z.string().optional(),
@@ -219,4 +225,3 @@ export async function listAgents(
     z.array(KyaAgentSchema),
   );
 }
-

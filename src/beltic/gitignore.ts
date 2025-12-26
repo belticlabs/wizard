@@ -12,7 +12,7 @@ import { GITIGNORE_ENTRIES } from '../lib/constants';
  */
 export function updateGitignore(installDir: string): boolean {
   const gitignorePath = path.join(installDir, '.gitignore');
-  
+
   let existingContent = '';
   if (fs.existsSync(gitignorePath)) {
     existingContent = fs.readFileSync(gitignorePath, 'utf-8');
@@ -60,7 +60,7 @@ export function updateGitignore(installDir: string): boolean {
  */
 export function hasBelticEntries(installDir: string): boolean {
   const gitignorePath = path.join(installDir, '.gitignore');
-  
+
   if (!fs.existsSync(gitignorePath)) {
     return false;
   }

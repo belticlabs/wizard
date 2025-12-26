@@ -1,7 +1,7 @@
 /**
  * Manifest utilities for patching and updating agent manifests
  * Uses LLM to analyze codebase and fill in appropriate values
- * 
+ *
  * TODO: Safety evaluation scores should come from actual benchmark evaluations
  * once the evaluation platform is integrated.
  */
@@ -15,7 +15,11 @@ import {
   PLACEHOLDER_ISSUER_DID,
   generatePlaceholderSubjectDid,
 } from '../lib/constants';
-import { getSourceFiles, readFileContent, type DetectionResult } from './detector';
+import {
+  getSourceFiles,
+  readFileContent,
+  type DetectionResult,
+} from './detector';
 import { debug } from '../utils/debug';
 
 /**
@@ -29,7 +33,7 @@ export async function analyzeAndPatchManifest(
   onProgress?: (message: string) => void,
 ): Promise<void> {
   const log = onProgress || ((msg: string) => debug(msg));
-  
+
   const manifestPath = path.join(installDir, 'agent-manifest.json');
 
   if (!fs.existsSync(manifestPath)) {
@@ -43,7 +47,7 @@ export async function analyzeAndPatchManifest(
   log('Discovering source files...');
   const sourceFiles = await getSourceFiles(installDir, detection.language, 15);
   log(`Found ${sourceFiles.length} source files to analyze`);
-  
+
   const fileContents: { path: string; content: string }[] = [];
   for (const file of sourceFiles) {
     log(`  Reading: ${file}`);
@@ -59,7 +63,7 @@ export async function analyzeAndPatchManifest(
   }
 
   log(`\nAnalyzing ${fileContents.length} files with LLM...`);
-  
+
   // Use LLM to analyze and generate values
   const analysis = await analyzeCodebaseForManifest(
     detection,
@@ -69,10 +73,12 @@ export async function analyzeAndPatchManifest(
   );
 
   log('LLM analysis complete');
-  
+
   // Log what was detected
   if (analysis.agentDescription) {
-    log(`  Agent description: "${analysis.agentDescription.substring(0, 60)}..."`);
+    log(
+      `  Agent description: "${analysis.agentDescription.substring(0, 60)}..."`,
+    );
   }
   if (analysis.primaryModelProvider) {
     log(`  Model provider: ${analysis.primaryModelProvider}`);
@@ -95,11 +101,19 @@ export async function analyzeAndPatchManifest(
 
   // Merge analysis into manifest
   log('\nMerging analysis into manifest...');
-  const patchedManifest = mergeAnalysisIntoManifest(manifest, analysis, agentName);
+  const patchedManifest = mergeAnalysisIntoManifest(
+    manifest,
+    analysis,
+    agentName,
+  );
 
   // Write updated manifest
   log('Writing updated manifest...');
-  fs.writeFileSync(manifestPath, JSON.stringify(patchedManifest, null, 2), 'utf-8');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(patchedManifest, null, 2),
+    'utf-8',
+  );
   log('Manifest updated successfully');
 }
 
@@ -107,11 +121,11 @@ interface ManifestAnalysis {
   // Agent info
   agentDescription?: string;
   agentVersion?: string;
-  
+
   // Model info
   primaryModelProvider?: string;
   primaryModelFamily?: string;
-  
+
   // Tools and capabilities
   tools?: Array<{
     toolId: string;
@@ -122,23 +136,23 @@ interface ManifestAnalysis {
     requiresAuth: boolean;
     requiresHumanApproval: boolean;
   }>;
-  
+
   // Data handling
   dataEncryptionStandards?: string[];
   dataRetentionPolicy?: string;
   dataHandlingPractices?: string[];
-  
+
   // Deployment
   deploymentEnvironment?: {
     type: string;
     description: string;
     runtime?: string;
   };
-  
+
   // Security
   authenticationMethods?: string[];
   auditLogging?: boolean;
-  
+
   // KYB tier assessment
   kybTierRequired?: string;
   kybTierJustification?: string;
@@ -248,10 +262,13 @@ Return ONLY valid JSON, no markdown or explanation.`;
     if (content.type === 'text') {
       // Try to parse JSON from response
       let jsonText = content.text.trim();
-      
+
       // Remove markdown code blocks if present
       if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+        jsonText = jsonText
+          .replace(/```json?\n?/g, '')
+          .replace(/```$/g, '')
+          .trim();
       }
 
       try {
@@ -326,7 +343,7 @@ function mergeAnalysisIntoManifest(
 
   // Add required credential fields with appropriate defaults
   // These are required by the schema but can't be determined from code analysis
-  
+
   // Identity fields
   if (!result.credentialId) {
     result.credentialId = `urn:uuid:${uuidv4()}`;
@@ -426,8 +443,13 @@ function mergeAnalysisIntoManifest(
   }
 
   // Fix systemConfigFingerprint format
-  if (result.systemConfigFingerprint && typeof result.systemConfigFingerprint === 'string') {
-    result.systemConfigFingerprint = (result.systemConfigFingerprint as string).replace('sha256:', '');
+  if (
+    result.systemConfigFingerprint &&
+    typeof result.systemConfigFingerprint === 'string'
+  ) {
+    result.systemConfigFingerprint = (
+      result.systemConfigFingerprint as string
+    ).replace('sha256:', '');
   }
 
   return result;
