@@ -58,6 +58,9 @@ jobs:
             echo "Published version: $PUBLISHED_VERSION"
           fi
 
+      - name: Install dependencies for version check
+        run: pnpm install --frozen-lockfile
+
       - name: Check if should publish
         id: should-publish
         run: |
@@ -72,7 +75,7 @@ jobs:
             echo "publish=true" >> $GITHUB_OUTPUT
             echo "✅ Package not found - will publish version $CURRENT"
           else
-            # Compare versions using node
+            # Compare versions using node with semver from package.json
             SHOULD_PUBLISH=$(node -e "
               const semver = require('semver');
               const current = '$CURRENT';
@@ -87,9 +90,6 @@ jobs:
             fi
           fi
 
-      - name: Install dependencies
-        if: steps.should-publish.outputs.publish == 'true'
-        run: pnpm install --frozen-lockfile
 
       - name: Build with API key injection
         if: steps.should-publish.outputs.publish == 'true'
