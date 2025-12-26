@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- Migrated to npm Trusted Publishing (OIDC) for secure, tokenless authentication
-- Removed dependency on `NPM_TOKEN` secret - no need to override 2FA
-
 ### Fixed
 - TypeScript type inference errors in command line argument parsing
 - Proper type assertions for yargs argv and environment variables

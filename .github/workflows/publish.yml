@@ -15,7 +15,6 @@ on:
         default: 'patch'
 
 permissions:
-  id-token: write  # Required for npm Trusted Publishing (OIDC)
   contents: read
 
 jobs:
@@ -31,8 +30,6 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-          # Uses OIDC token automatically when Trusted Publishing is configured
-          # No NODE_AUTH_TOKEN needed - uses id-token: write permission
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -99,8 +96,8 @@ jobs:
 
       - name: Publish to npm
         if: steps.should-publish.outputs.publish == 'true'
-        # No NODE_AUTH_TOKEN needed - uses OIDC via Trusted Publishing
-        # The setup-node action automatically configures authentication
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm publish --access public --no-git-checks
 
       - name: Create GitHub Release
