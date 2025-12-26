@@ -100,8 +100,30 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm publish --access public --no-git-checks
 
+      - name: Check if GitHub release exists
+        id: check-release
+        continue-on-error: true
+        run: |
+          TAG_NAME="v${{ steps.version.outputs.current }}"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/belticlabs/wizard/releases/tags/$TAG_NAME")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release $TAG_NAME already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release $TAG_NAME does not exist (HTTP $RESPONSE)"
+          fi
+
       - name: Create GitHub Release
-        if: steps.should-publish.outputs.publish == 'true'
+        # Create release if package exists on npm but release doesn't exist
+        # This handles cases where npm publish succeeded but release creation was skipped
+        if: |
+          (steps.should-publish.outputs.publish == 'true' || steps.check-npm.outputs.exists == 'true') &&
+          steps.check-release.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.current }}
