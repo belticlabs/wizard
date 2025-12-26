@@ -30,7 +30,10 @@ jobs:
     name: Publish release if new version
     runs-on: ubuntu-24.04
     needs: check-package-version
-    if: needs.check-package-version.outputs.is-new-version == 'true'
+    # Publish if it's a new version OR if package doesn't exist yet (first publish)
+    if: |
+      needs.check-package-version.outputs.is-new-version == 'true' ||
+      needs.check-package-version.outputs.published-version == ''
     env:
       COMMITTED_VERSION: ${{ needs.check-package-version.outputs.committed-version }}
       PUBLISHED_VERSION: ${{ needs.check-package-version.outputs.published-version }}
