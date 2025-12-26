@@ -17,7 +17,7 @@
     "verify"
   ],
   "bin": {
-    "beltic-wizard": "dist/bin.js"
+    "wizard": "dist/bin.js"
   },
   "publishConfig": {
     "access": "public"
@@ -84,6 +84,7 @@
     "build:watch": "pnpm tsc -w",
     "build": "pnpm tsc",
     "postbuild": "chmod +x ./dist/bin.js",
+    "build:with-key": "pnpm build && node scripts/inject-api-key.js dist",
     "lint": "pnpm lint:prettier && pnpm lint:eslint",
     "lint:prettier": "prettier --check \"src/**/*.ts\"",
     "lint:eslint": "eslint . --cache --format stylish",

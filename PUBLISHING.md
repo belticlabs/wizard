@@ -1,222 +1,114 @@
-# Publishing Guide for Beltic Wizard
+# Publishing Guide
 
-This guide covers the steps to publish the `@belticlabs/wizard` package to npm.
+## Publishing to npm
 
-## Prerequisites
-
-1. **npm Account**: You must have access to the `@belticlabs` organization on npm
-2. **Authentication**: Be logged in to npm with appropriate permissions
-3. **Version**: Ensure version number is updated in `package.json`
-
-## Pre-Publishing Checklist
-
-- [ ] All tests pass: `pnpm test`
-- [ ] Code is linted: `pnpm lint`
-- [ ] Build succeeds: `pnpm build`
-- [ ] Version number updated in `package.json`
-- [ ] CHANGELOG.md updated (if applicable)
-- [ ] README.md is up to date
-- [ ] AUTHENTICATION.md is up to date
-- [ ] All changes committed to git
-- [ ] Branch is ready to merge (or already merged to main)
-
-## Publishing Steps
-
-### 1. Build the Package
+The wizard is published as `@belticlabs/wizard` and can be run with:
 
 ```bash
-cd wizard
-pnpm build
+npx @belticlabs/wizard
 ```
 
-This will:
-- Clean the `dist/` directory
-- Compile TypeScript to JavaScript
-- Make `dist/bin.js` executable
+## Setup Requirements
 
-### 2. Verify Build Output
+### 1. GitHub Secrets
 
-Check that the following files exist:
-- `dist/bin.js` (executable)
-- `dist/src/` (compiled source files)
-- `dist/index.js` (if applicable)
-- `dist/index.d.ts` (TypeScript definitions)
+Add these secrets to your GitHub repository settings (`Settings > Secrets and variables > Actions`):
 
-### 3. Test Locally (Optional but Recommended)
+- **`NPM_TOKEN`**: npm authentication token with publish permissions
+  - Create at: https://www.npmjs.com/settings/belticlabs/tokens
+  - Token type: Automation token
+  - Permissions: Read and Publish
 
-```bash
-# Link the package locally
-pnpm link --global
+- **`ANTHROPIC_API_KEY`**: Anthropic API key to be compiled into the wizard
+  - This allows Beltic to cover API costs for users
+  - The key is injected at build time and never appears in source code
+  - Get from: https://console.anthropic.com/
 
-# Test in a sample project
-cd /path/to/test/agent
-npx beltic-wizard
-```
+### 2. npm Organization Setup
 
-### 4. Check Package Contents
-
-Verify what will be published:
+Ensure `@belticlabs` organization exists on npm and you have publish access:
 
 ```bash
-# See what files will be included
-npm pack --dry-run
-
-# Or actually create the tarball to inspect
-npm pack
-tar -tzf belticlabs-wizard-*.tgz
-```
-
-The `files` field in `package.json` controls what gets published:
-- `dist/bin.*`
-- `dist/src`
-- `package.json`
-- `README.md`
-
-### 5. Publish to npm
-
-#### For Public Release:
-
-```bash
-# Publish to npm (public access is configured in package.json)
-npm publish --access public
-```
-
-#### For Beta/RC Release:
-
-```bash
-# Publish as beta
-npm publish --tag beta
-
-# Or as release candidate
-npm publish --tag rc
-```
-
-#### For Dry Run (Test):
-
-```bash
-# See what would be published without actually publishing
-npm publish --dry-run
-```
-
-### 6. Verify Publication
-
-After publishing, verify:
-
-1. **Check npm registry**:
-   ```bash
-   npm view @belticlabs/wizard
-   ```
-
-2. **Test installation**:
-   ```bash
-   # In a clean directory
-   npx @belticlabs/wizard --version
-   ```
-
-3. **Check package page**: Visit https://www.npmjs.com/package/@belticlabs/wizard
-
-## Version Management
-
-### Semantic Versioning
-
-Follow [Semantic Versioning](https://semver.org/):
-- **MAJOR** (x.0.0): Breaking changes
-- **MINOR** (0.x.0): New features, backward compatible
-- **PATCH** (0.0.x): Bug fixes, backward compatible
-
-### Updating Version
-
-```bash
-# Update version in package.json manually, or use npm version:
-
-# Patch release (0.0.x -> 0.0.x+1)
-npm version patch
-
-# Minor release (0.x.0 -> 0.x+1.0)
-npm version minor
-
-# Major release (x.0.0 -> x+1.0.0)
-npm version major
-```
-
-This will:
-- Update `package.json` version
-- Create a git commit
-- Create a git tag
-
-Then push the tag:
-```bash
-git push origin main --tags
-```
-
-## Post-Publishing
-
-1. **Create GitHub Release** (if applicable):
-   - Go to https://github.com/belticlabs/wizard/releases
-   - Click "Draft a new release"
-   - Select the tag created by `npm version`
-   - Add release notes from CHANGELOG.md
-
-2. **Update Documentation**:
-   - Update any external docs that reference the wizard
-   - Update installation instructions if needed
-
-3. **Announce** (if applicable):
-   - Update team/internal docs
-   - Announce in relevant channels
-
-## Troubleshooting
-
-### Authentication Errors
-
-If you get authentication errors:
-```bash
-# Login to npm
-npm login
-
-# Verify you're logged in
-npm whoami
-
-# Check your npm organization access
 npm org ls belticlabs
 ```
 
-### Permission Errors
-
-If you get permission errors:
-- Ensure you're a member of the `@belticlabs` organization on npm
-- Check that the package name matches your organization scope
-- Verify `publishConfig.access` is set to `"public"` in `package.json`
-
-### Build Errors
-
-If build fails:
+If needed, create the organization:
 ```bash
-# Clean and rebuild
-pnpm clean
-pnpm install
-pnpm build
+npm org create belticlabs
 ```
 
-### Package Already Exists
+## Publishing Process
 
-If version already exists:
-- Update version number in `package.json`
-- Or use `npm publish --force` (not recommended for production)
+### Automatic Publishing
 
-## Current Configuration
+The wizard automatically publishes when:
 
-- **Package Name**: `@belticlabs/wizard`
-- **Access**: Public (`publishConfig.access: "public"`)
-- **Current Version**: Check `package.json`
-- **Package Manager**: pnpm (lockfile included)
-- **Node Version**: >= 18.17.0
-- **Files Included**: `dist/`, `package.json`, `README.md`
+1. A commit is pushed to `main` branch
+2. The version in `package.json` is higher than the published version on npm
+3. The publish workflow runs successfully
 
-## Notes
+### Manual Publishing
 
-- The package uses pnpm, but npm users can install it normally
-- The default Anthropic API key is compiled into the package (Beltic covers costs)
-- Authentication credentials are stored in `~/.beltic/credentials.json` (user-specific)
-- The wizard requires an interactive terminal (TTY)
+To publish manually:
 
+```bash
+# 1. Update version in package.json
+npm version patch|minor|major
+
+# 2. Build with API key injection (if you have the key locally)
+ANTHROPIC_API_KEY=your_key_here pnpm build:with-key
+
+# 3. Publish
+pnpm publish --access public
+```
+
+**Note:** For production releases, always use the GitHub Actions workflow to ensure the API key is securely injected from GitHub Secrets.
+
+## Version Management
+
+The workflow uses `PostHog/check-package-version@v2` to detect version changes. This action:
+
+- Compares `package.json` version with published npm version
+- Only publishes if the committed version is newer
+- Prevents duplicate publishes
+
+## API Key Security
+
+The Anthropic API key is:
+
+- ✅ Stored as a GitHub Secret (encrypted)
+- ✅ Injected at build time (not in source code)
+- ✅ Compiled into the bundle (users don't need to provide it)
+- ✅ Never exposed in git history or source code
+
+The injection script (`scripts/inject-api-key.js`) replaces the empty string fallback with the actual key during the build process.
+
+## Testing Before Publishing
+
+```bash
+# Build locally
+pnpm build
+
+# Test the built package
+node dist/bin.js --help
+
+# Pack and test installation
+pnpm pack
+npm install -g belticlabs-wizard-*.tgz
+wizard --help
+```
+
+## Troubleshooting
+
+### "Package version check failed"
+- Ensure version in `package.json` is higher than npm published version
+- Check npm registry: `npm view @belticlabs/wizard version`
+
+### "NPM_TOKEN not found"
+- Add `NPM_TOKEN` secret to GitHub repository
+- Ensure token has publish permissions
+
+### "API key not injected"
+- Check `ANTHROPIC_API_KEY` secret exists in GitHub
+- Verify the injection script runs: `pnpm build:with-key`
+- Check build logs for injection confirmation

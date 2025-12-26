@@ -52,8 +52,13 @@ jobs:
       - name: Install package.json dependencies with pnpm
         run: pnpm install --frozen-lockfile
 
-      - name: Build the package
-        run: pnpm build
+      - name: Build the package with API key injection
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: pnpm build:with-key
         
       - name: Publish the package in the npm registry
-        run: pnpm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --access public --no-git-checks
+        if: env.COMMITTED_VERSION != env.PUBLISHED_VERSION
