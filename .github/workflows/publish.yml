@@ -1,67 +1,125 @@
-name: "Publish"
+name: Publish
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'package.json'
+      - '.github/workflows/publish.yml'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (patch/minor/major)'
+        required: false
+        default: 'patch'
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  check-package-version:
-    name: Check package version and detect an update
-    runs-on: ubuntu-24.04
-    outputs:
-      committed-version: ${{ steps.check-package-version.outputs.committed-version }}
-      published-version: ${{ steps.check-package-version.outputs.published-version }}
-      is-new-version: ${{ steps.check-package-version.outputs.is-new-version }}
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout the repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check package version and detect an update
-        id: check-package-version
-        uses: PostHog/check-package-version@v2
-
-  release:
-    name: Publish release if new version
-    runs-on: ubuntu-24.04
-    needs: check-package-version
-    # Publish if it's a new version OR if package doesn't exist yet (first publish)
-    if: |
-      needs.check-package-version.outputs.is-new-version == 'true' ||
-      needs.check-package-version.outputs.published-version == ''
-    env:
-      COMMITTED_VERSION: ${{ needs.check-package-version.outputs.committed-version }}
-      PUBLISHED_VERSION: ${{ needs.check-package-version.outputs.published-version }}
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node 24
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
 
-      - name: Install package.json dependencies with pnpm
+      - name: Get current version
+        id: version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Check if version exists on npm
+        id: check-npm
+        continue-on-error: true
+        run: |
+          PUBLISHED_VERSION=$(npm view @belticlabs/wizard version 2>/dev/null || echo "")
+          if [ -z "$PUBLISHED_VERSION" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Package does not exist on npm (first publish)"
+          else
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "published=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
+            echo "Published version: $PUBLISHED_VERSION"
+          fi
+
+      - name: Check if should publish
+        id: should-publish
+        run: |
+          CURRENT="${{ steps.version.outputs.current }}"
+          PUBLISHED="${{ steps.check-npm.outputs.published }}"
+          EXISTS="${{ steps.check-npm.outputs.exists }}"
+          
+          if [ "$EXISTS" = "false" ]; then
+            echo "publish=true" >> $GITHUB_OUTPUT
+            echo "✅ First publish - will publish version $CURRENT"
+          elif [ -z "$PUBLISHED" ]; then
+            echo "publish=true" >> $GITHUB_OUTPUT
+            echo "✅ Package not found - will publish version $CURRENT"
+          else
+            # Compare versions using node
+            SHOULD_PUBLISH=$(node -e "
+              const semver = require('semver');
+              const current = '$CURRENT';
+              const published = '$PUBLISHED';
+              console.log(semver.gt(current, published) ? 'true' : 'false');
+            ")
+            echo "publish=$SHOULD_PUBLISH" >> $GITHUB_OUTPUT
+            if [ "$SHOULD_PUBLISH" = "true" ]; then
+              echo "✅ Version $CURRENT > $PUBLISHED - will publish"
+            else
+              echo "ℹ️  Version $CURRENT <= $PUBLISHED - skipping publish"
+            fi
+          fi
+
+      - name: Install dependencies
+        if: steps.should-publish.outputs.publish == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Build the package with API key injection
+      - name: Build with API key injection
+        if: steps.should-publish.outputs.publish == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: pnpm build:with-key
-        
-      - name: Publish the package in the npm registry
+
+      - name: Publish to npm
+        if: steps.should-publish.outputs.publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm publish --access public --no-git-checks
-        if: env.COMMITTED_VERSION != env.PUBLISHED_VERSION
+
+      - name: Create GitHub Release
+        if: steps.should-publish.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.current }}
+          name: Release v${{ steps.version.outputs.current }}
+          body: |
+            ## Changes
+            
+            See [CHANGELOG.md](https://github.com/belticlabs/wizard/blob/main/CHANGELOG.md) for details.
+            
+            ## Installation
+            
+            ```bash
+            npx @belticlabs/wizard
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
