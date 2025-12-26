@@ -15,7 +15,7 @@ on:
         default: 'patch'
 
 permissions:
-  contents: read
+  contents: write  # Required to create GitHub releases
 
 jobs:
   publish:
