@@ -6,7 +6,6 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import { z } from 'zod';
 import { BELTIC_CONFIG_DIR, CREDENTIALS_FILE } from './constants';
 import { debug } from '../utils/debug';
