@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - DNS resolution error for `console.beltic.app` - updated default URL to `kya.beltic.app`
+- Schema validation errors in manifest generation:
+  - Fixed `schemaVersion` from `2.0.0` to `1.0`
+  - Fixed `overallSafetyRating` from `unverified` to `evaluation_pending`
+  - Fixed `verificationLevel` from `self-signed` to `self_attested`
+  - Fixed `assuranceSource` values from `self-declared` to `self`
+  - Fixed DID format to use `did:web:beltic.dev:...` pattern
+  - Added required `complianceCertifications` field
+  - Added `proofValue` to proof object
+  - Remove invalid fields (`deploymentContext`, `subjectDid`)
 - TypeScript type inference errors in command line argument parsing
 - Proper type assertions for yargs argv and environment variables
 

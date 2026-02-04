@@ -63,30 +63,34 @@ export const WIZARD_INTERACTION_EVENT_NAME = 'beltic wizard interaction';
 /**
  * Placeholder issuer DID for self-signed credentials.
  *
+ * Uses did:web method which is valid per the schema pattern:
+ * ^did:(web|key|ion|pkh|ethr):[a-zA-Z0-9._%-]+
+ *
  * TODO: Replace with actual platform-issued DIDs once the Beltic platform is ready.
  *
  * In production:
  * - Developer registers on Beltic platform
- * - Platform issues a developer DID (did:beltic:dev:xxx)
+ * - Platform issues a developer DID (did:web:beltic.dev:developers:xxx)
  * - Developer uses their DID to sign agent credentials
  * - Verifiers can resolve the DID to check developer identity
  *
  * For now, this placeholder allows local testing and development.
  */
-export const PLACEHOLDER_ISSUER_DID = 'did:beltic:wizard:self-signed';
+export const PLACEHOLDER_ISSUER_DID = 'did:web:beltic.dev:wizard:self-attested';
 
 /**
  * Generate a placeholder subject DID for the agent.
  * Uses the agent name to create a unique identifier.
+ * Uses did:web method which is valid per the schema pattern.
  */
 export function generatePlaceholderSubjectDid(agentName: string): string {
-  // Normalize agent name to be DID-safe
+  // Normalize agent name to be DID-safe (alphanumeric, dots, underscores, percent, hyphens)
   const safeName = agentName
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/[^a-z0-9._%-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-  return `did:beltic:agent:${safeName}`;
+  return `did:web:beltic.dev:agents:${safeName}`;
 }
 
 // Default patterns for gitignore

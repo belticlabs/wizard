@@ -355,7 +355,7 @@ function mergeAnalysisIntoManifest(
     result.subjectDid = generatePlaceholderSubjectDid(agentName);
   }
   if (!result.schemaVersion) {
-    result.schemaVersion = '2.0.0';
+    result.schemaVersion = '1.0';
   }
 
   // Safety evaluation fields - these should come from actual evaluations
@@ -365,7 +365,7 @@ function mergeAnalysisIntoManifest(
     benchmarkName: 'pending-evaluation',
     benchmarkVersion: '0.0.0',
     evaluationDate: now.toISOString(),
-    assuranceSource: 'self-declared',
+    assuranceSource: 'self', // Valid values: self, beltic, third_party
   };
 
   if (!result.harmfulContentRefusalScore) {
@@ -402,14 +402,17 @@ function mergeAnalysisIntoManifest(
   }
 
   // Verification fields
+  // Valid overallSafetyRating: minimal_risk, low_risk, moderate_risk, high_risk, evaluation_pending
   if (!result.overallSafetyRating) {
-    result.overallSafetyRating = 'unverified';
+    result.overallSafetyRating = 'evaluation_pending';
   }
+  // Valid verificationLevel: self_attested, beltic_verified, third_party_verified
   if (!result.verificationLevel) {
-    result.verificationLevel = 'self-signed';
+    result.verificationLevel = 'self_attested';
   }
+  // verificationMethod must be a DID URL format: did:(web|key|ion|pkh|ethr):...#key-id
   if (!result.verificationMethod) {
-    result.verificationMethod = 'Ed25519Signature2020';
+    result.verificationMethod = `${PLACEHOLDER_ISSUER_DID}#key-1`;
   }
   if (!result.credentialStatus) {
     result.credentialStatus = 'active';
@@ -418,23 +421,31 @@ function mergeAnalysisIntoManifest(
     result.revocationListUrl = 'https://beltic.dev/revocation/placeholder';
   }
 
-  // Proof placeholder
+  // Proof placeholder - will be replaced by actual signature during signing
   if (!result.proof) {
     result.proof = {
       type: 'Ed25519Signature2020',
       created: now.toISOString(),
       proofPurpose: 'assertionMethod',
-      verificationMethod: PLACEHOLDER_ISSUER_DID + '#key-1',
+      verificationMethod: `${PLACEHOLDER_ISSUER_DID}#key-1`,
+      proofValue: 'placeholder-will-be-replaced-during-signing',
     };
   }
 
-  // Clean up invalid fields
+  // Add required complianceCertifications field
+  if (!result.complianceCertifications) {
+    result.complianceCertifications = [];
+  }
+
+  // Clean up invalid fields that are not in the schema
   const fieldsToRemove = [
     '_metadata',
     'fingerprintMetadata',
     'incidentResponseSlo', // wrong case
     'manifestRevision',
     'manifestSchemaVersion',
+    'deploymentContext', // not in schema
+    'subjectDid', // not in schema (subject info is in issuerDid context)
   ];
   for (const field of fieldsToRemove) {
     if (field in result) {
