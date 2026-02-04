@@ -51,13 +51,34 @@ import { abort } from './utils/clack-utils';
  * Authenticate with the KYA platform via WorkOS OAuth
  *
  * Flow:
- * 1. Check for existing valid credentials
- * 2. If none/expired, prompt user to login
- * 3. Perform OAuth flow with WorkOS AuthKit
- * 4. Fetch developer data from KYA API
- * 5. Save credentials to ~/.beltic/credentials.json
+ * 1. If localOnly, skip authentication entirely
+ * 2. Check for existing valid credentials
+ * 3. If none/expired, prompt user to login
+ * 4. If user declines, offer local mode
+ * 5. Perform OAuth flow with WorkOS AuthKit
+ * 6. Fetch developer data from KYA API
+ * 7. Save credentials to ~/.beltic/credentials.json
+ * 8. On auth failure, offer local mode as fallback
+ *
+ * @param localOnly - If true, skip authentication and run in local mode
+ * @returns StoredCredentials if authenticated, null if running in local mode
  */
-async function authenticateWithKya(): Promise<StoredCredentials> {
+async function authenticateWithKya(
+  localOnly: boolean,
+): Promise<StoredCredentials | null> {
+  // If localOnly is set via CLI flag, skip authentication entirely
+  if (localOnly) {
+    clack.log.info(
+      chalk.yellow('Running in local mode - skipping authentication'),
+    );
+    clack.log.info(
+      chalk.dim(
+        'Credentials will be created locally. You can upload them later with: beltic upload',
+      ),
+    );
+    return null;
+  }
+
   // Check for existing valid credentials
   const existing = loadCredentials();
   if (existing && hasValidCredentials()) {
@@ -76,10 +97,32 @@ async function authenticateWithKya(): Promise<StoredCredentials> {
     initialValue: true,
   });
 
-  if (clack.isCancel(shouldLogin) || !shouldLogin) {
-    clack.log.error('Authentication is required to use the Beltic wizard.');
-    abort();
-    throw new Error('Authentication cancelled');
+  if (clack.isCancel(shouldLogin)) {
+    clack.cancel('Wizard cancelled.');
+    process.exit(0);
+  }
+
+  // If user declines login, offer local-only mode
+  if (!shouldLogin) {
+    const useLocalMode = await clack.confirm({
+      message: 'Continue in local mode? (credentials will be created locally)',
+      initialValue: true,
+    });
+
+    if (clack.isCancel(useLocalMode) || !useLocalMode) {
+      clack.cancel('Wizard cancelled.');
+      process.exit(0);
+    }
+
+    clack.log.info(
+      chalk.yellow('Running in local mode - skipping authentication'),
+    );
+    clack.log.info(
+      chalk.dim(
+        'Credentials will be created locally. You can upload them later with: beltic upload',
+      ),
+    );
+    return null;
   }
 
   // Perform OAuth flow
@@ -121,14 +164,36 @@ async function authenticateWithKya(): Promise<StoredCredentials> {
 
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    clack.log.error(
-      `Failed to authenticate: ${errorMessage}\n\n${chalk.dim(
-        `If you think this is a bug, please report it:\n${ISSUES_URL}`,
+
+    // Offer local mode as fallback on auth failure
+    clack.log.warn(
+      `Authentication failed: ${errorMessage}\n\n${chalk.dim(
+        'You can continue in local mode to create credentials without connecting to the platform.',
       )}`,
     );
 
-    abort();
-    throw error;
+    const useLocalMode = await clack.confirm({
+      message: 'Continue in local mode?',
+      initialValue: true,
+    });
+
+    if (clack.isCancel(useLocalMode) || !useLocalMode) {
+      clack.log.error(
+        `${chalk.dim(`If you think this is a bug, please report it:\n${ISSUES_URL}`)}`,
+      );
+      abort();
+      throw error;
+    }
+
+    clack.log.info(
+      chalk.yellow('Running in local mode - skipping authentication'),
+    );
+    clack.log.info(
+      chalk.dim(
+        'Credentials will be created locally. You can upload them later with: beltic upload',
+      ),
+    );
+    return null;
   }
 }
 
@@ -149,9 +214,15 @@ export async function runWizard(options: WizardOptions): Promise<void> {
   debug('Install directory:', installDir);
 
   try {
-    // Step 0: Authenticate with KYA platform
-    const credentials = await authenticateWithKya();
-    debug('Authenticated as:', credentials.email);
+    // Step 0: Authenticate with KYA platform (or run in local mode)
+    const credentials = await authenticateWithKya(options.localOnly);
+    const isLocalMode = credentials === null;
+
+    if (credentials) {
+      debug('Authenticated as:', credentials.email);
+    } else {
+      debug('Running in local mode (no authentication)');
+    }
 
     // Step 1: Check/Install Beltic CLI
     await ensureBelticCli();
@@ -185,7 +256,7 @@ export async function runWizard(options: WizardOptions): Promise<void> {
     }
 
     // Final summary
-    printSummary(installDir, detection.agentName, options);
+    printSummary(installDir, detection.agentName, options, isLocalMode);
   } catch (error) {
     clack.log.error(`An error occurred: ${(error as Error).message}`);
     debug('Full error:', error);
@@ -580,6 +651,7 @@ function printSummary(
   installDir: string,
   agentName: string,
   options: WizardOptions,
+  isLocalMode = false,
 ): void {
   const files = [
     '.beltic.yaml - Configuration',
@@ -614,6 +686,15 @@ function printSummary(
     nextSteps.unshift(
       chalk.yellow(
         '⚠ Signed without validation - credential may not be valid for production',
+      ),
+    );
+  }
+
+  // Add local mode notice
+  if (isLocalMode) {
+    nextSteps.unshift(
+      chalk.yellow(
+        '⚠ Local mode - credentials created locally. Run `beltic upload` when ready to publish.',
       ),
     );
   }

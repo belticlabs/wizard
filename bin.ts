@@ -82,6 +82,13 @@ yargs(hideBin(process.argv))
           describe: 'Skip schema validation when signing (for local testing)',
           type: 'boolean',
         },
+        local: {
+          default: false,
+          describe:
+            'Run in local-only mode without authentication.\nCreates credentials locally without connecting to the platform.\nenv: BELTIC_WIZARD_LOCAL',
+          type: 'boolean',
+          alias: 'offline',
+        },
       });
     },
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -124,6 +131,7 @@ yargs(hideBin(process.argv))
         skipReadme: argv['skip-readme'] ?? false,
         force: argv.force ?? false,
         skipValidation: argv['skip-validation'] ?? false,
+        localOnly: argv.local ?? false,
       };
 
       // eslint-disable-next-line @typescript-eslint/no-floating-promises

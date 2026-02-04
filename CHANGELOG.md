@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Local-only mode (`--local` / `--offline` flag) to create credentials without authentication
+  - When user declines auth prompt, they are offered the option to continue in local mode
+  - Auth failures (network errors, DNS issues) now offer local mode as fallback
+  - Local mode generates credentials that can be uploaded later with `beltic upload`
+
 ### Fixed
+- DNS resolution error for `console.beltic.app` - updated default URL to `kya.beltic.app`
 - TypeScript type inference errors in command line argument parsing
 - Proper type assertions for yargs argv and environment variables
 

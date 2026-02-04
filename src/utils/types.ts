@@ -33,6 +33,12 @@ export type WizardOptions = {
    * Skip schema validation when signing (for local testing).
    */
   skipValidation: boolean;
+
+  /**
+   * Run in local-only mode without authentication.
+   * Creates credentials locally without connecting to the platform.
+   */
+  localOnly: boolean;
 };
 
 export type FileChange = {
