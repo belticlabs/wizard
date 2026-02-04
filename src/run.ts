@@ -179,7 +179,9 @@ async function authenticateWithKya(
 
     if (clack.isCancel(useLocalMode) || !useLocalMode) {
       clack.log.error(
-        `${chalk.dim(`If you think this is a bug, please report it:\n${ISSUES_URL}`)}`,
+        `${chalk.dim(
+          `If you think this is a bug, please report it:\n${ISSUES_URL}`,
+        )}`,
       );
       abort();
       throw error;

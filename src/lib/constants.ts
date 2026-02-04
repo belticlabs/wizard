@@ -29,8 +29,7 @@ export const OAUTH_PORT = 8239;
 // Console URL (Next.js app deployed at kya.beltic.app)
 // This is the web console app that serves API routes like /api/auth/token and /api/developers/me
 // Can be overridden via environment variables for local development
-export const KYA_API_URL =
-  process.env.KYA_API_URL || 'https://kya.beltic.app';
+export const KYA_API_URL = process.env.KYA_API_URL || 'https://kya.beltic.app';
 
 // Legacy auth URL (now handled by WorkOS directly)
 export const KYA_AUTH_URL =
