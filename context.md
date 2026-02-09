@@ -8,8 +8,14 @@
 **Mechanism**:
 - Codebase Analysis: Uses Claude AI to detect language, framework, and structure
 - Configuration Generation: Creates optimal `.beltic.yaml` patterns
-- Credential Creation: Orchestrates Beltic CLI commands to create and sign credentials
+- Credential Attestation: Calls `beltic attest` to fingerprint, validate, and sign credentials in one step
 - File Updates: Automatically updates `.gitignore` and `README.md`
+
+**Architecture Separation**:
+- **Wizard** = interactive scaffolding tool (generates `.beltic.yaml` + `agent-credential.json` via Claude analysis)
+- **`beltic attest`** = non-interactive signing tool (reads config + credential, produces signed JWT)
+- The wizard calls `beltic attest` as a subprocess for the signing step
+- CI/CD pipelines only need `beltic attest` -- they do not need the wizard at all
 
 ## Quick Commands
 
@@ -60,7 +66,7 @@ wizard/
 │   ├── bin.ts              # CLI entry point
 │   ├── beltic/             # Beltic CLI integration
 │   │   ├── detector.ts     # Codebase detection (language, framework, etc.)
-│   │   ├── cli.ts          # Beltic CLI command execution
+│   │   ├── cli.ts          # Beltic CLI command execution (includes runBelticAttest)
 │   │   ├── yaml-generator.ts # .beltic.yaml generation
 │   │   ├── manifest.ts     # Manifest analysis and patching
 │   │   ├── schema.ts       # Schema validation
@@ -68,7 +74,7 @@ wizard/
 │   │   └── readme.ts       # README.md updates
 │   ├── lib/                # Core libraries
 │   │   ├── api.ts          # KYA API client
-│   │   ├── constants.ts    # Constants and configuration
+│   │   ├── constants.ts    # Constants, configuration, and placeholder DID generation
 │   │   ├── credentials.ts  # Credential storage/loading
 │   │   ├── kya-oauth.ts    # OAuth authentication
 │   │   ├── workos-oauth.ts # WorkOS OAuth flow
@@ -298,20 +304,21 @@ git commit -m "docs: update README with OAuth flow"
 
 ### What This Repo Does
 
-- ✅ Analyzes codebases using Claude AI
-- ✅ Generates `.beltic.yaml` configuration
-- ✅ Creates agent manifests via Beltic CLI
-- ✅ Generates cryptographic keypairs
-- ✅ Signs credentials
-- ✅ Updates `.gitignore` and `README.md`
-- ✅ Authenticates with KYA platform via OAuth
+- Analyzes codebases using Claude AI
+- Generates `.beltic.yaml` configuration
+- Creates agent manifests via Beltic CLI
+- Generates cryptographic keypairs
+- Attests credentials via `beltic attest` (fingerprint + validate + sign)
+- Updates `.gitignore` and `README.md`
+- Authenticates with KYA platform via OAuth
 
 ### What This Repo Doesn't Do
 
-- ❌ Issue credentials (delegates to KYA platform)
-- ❌ Store credentials long-term (only during setup)
-- ❌ Provide a credential database
-- ❌ Handle ongoing credential management (use beltic-cli)
+- Does not implement signing logic (delegates to `beltic attest` CLI)
+- Does not issue credentials (delegates to KYA platform)
+- Does not store credentials long-term (only during setup)
+- Does not provide a credential database
+- Does not handle ongoing credential management (use beltic-cli or `beltic attest` in CI/CD)
 
 ## Examples
 
@@ -365,12 +372,37 @@ async function runBelticInit(options: InitOptions): Promise<void> {
     '--output', options.output,
     '--non-interactive',
   ];
-  
+
   await exec('beltic', args, {
     cwd: options.installDir,
   });
 }
 ```
+
+### Using `beltic attest` (Signing Step)
+
+The wizard delegates signing to `beltic attest`, which combines fingerprinting, schema
+validation, and JWT signing into a single CLI call:
+
+```typescript
+import { runBelticAttest } from './beltic/cli';
+
+const result = await runBelticAttest(installDir, {
+  key: '.beltic/ed25519-private.pem',  // --key (required)
+  credential: 'agent-manifest.json',    // --credential
+  kid: 'agent-key',                     // --kid
+  out: 'agent-credential.jwt',          // --out
+  skipSchema: false,                    // --skip-schema
+  skipFingerprint: false,               // --skip-fingerprint
+  issuer: 'did:web:...',               // --issuer
+  subject: 'did:web:...',              // --subject
+  // alg is optional -- CLI defaults to EdDSA
+});
+```
+
+This replaced the previous two-step flow (`runBelticFingerprint()` + `runBelticSign()`)
+with a single `runBelticAttest()` call. CI/CD pipelines can invoke `beltic attest`
+directly without the wizard.
 
 ### OAuth Flow
 
@@ -395,10 +427,12 @@ const developer = await fetchDeveloperData(access_token, KYA_API_URL);
 2. **Detect**: `detectCodebase()` - Analyze codebase structure
 3. **Generate YAML**: `generateBelticYaml()` - Create `.beltic.yaml` with Claude
 4. **Initialize**: `runBelticInit()` - Create `agent-manifest.json`
-5. **Fingerprint**: `runBelticFingerprint()` - Generate code fingerprint
-6. **Generate Keys**: `runBelticKeygen()` - Create Ed25519 keypair
-7. **Sign**: `runBelticSign()` - Sign credential as JWT
+5. **Analyze Manifest**: `analyzeAndPatchManifest()` - Use Claude to fill manifest fields intelligently
+6. **Generate Keys**: `runBelticKeygen()` - Create Ed25519 keypair (if not already present)
+7. **Attest**: `runBelticAttest()` - Fingerprint + validate + sign in a single `beltic attest` CLI invocation
 8. **Update Files**: `updateGitignore()`, `updateReadme()`
+
+> **Note**: Steps 6 and 7 are combined in `generateKeysAndAttest()` in `src/run.ts`. The wizard no longer calls separate `beltic fingerprint` and `beltic sign` commands -- it delegates all of that to `beltic attest`, which handles fingerprinting, schema validation, and JWT signing as a single atomic operation.
 
 ### Adding Framework Detection
 

@@ -18,9 +18,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Identity
 
-**Name**: Beltic Wizard  
-**Purpose**: Claude-powered CLI tool that automatically analyzes AI agent codebases and generates Beltic credentials.  
+**Name**: Beltic Wizard
+**Purpose**: Claude-powered CLI tool that automatically analyzes AI agent codebases and generates Beltic credentials. The wizard handles interactive scaffolding (codebase analysis, config generation) and delegates signing to `beltic attest`.
 **Core Value**: Automated, intelligent credential bootstrap with minimal developer effort.
+
+**Key Architecture**: The wizard is cleanly separated from signing logic:
+- **Wizard** = interactive scaffolding (generates `.beltic.yaml` + `agent-manifest.json` via Claude analysis)
+- **`beltic attest`** = non-interactive signing (reads config + credential, produces signed JWT)
+- CI/CD pipelines only need `beltic attest` -- they do not need the wizard
 
 ## Technology Stack
 
@@ -40,7 +45,7 @@ wizard/
 │   ├── run.ts              # Main entry point, orchestrates workflow
 │   ├── beltic/             # Beltic CLI integration
 │   │   ├── detector.ts     # Codebase detection
-│   │   ├── cli.ts          # Beltic CLI command execution
+│   │   ├── cli.ts          # Beltic CLI command execution (includes runBelticAttest)
 │   │   └── yaml-generator.ts # .beltic.yaml generation
 │   ├── lib/                # Core libraries
 │   │   ├── api.ts          # KYA API client
