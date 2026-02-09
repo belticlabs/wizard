@@ -20,7 +20,7 @@ import {
   runBelticInit,
   runBelticFingerprint,
   runBelticKeygen,
-  runBelticSign,
+  runBelticAttest,
   findPrivateKey,
   findCredentialFiles,
   updateGitignore,
@@ -241,12 +241,12 @@ export async function runWizard(options: WizardOptions): Promise<void> {
     // Step 5: Run beltic init (or update manifest)
     await initializeManifest(installDir, options, existingFiles);
 
-    // Step 6: Run beltic fingerprint
-    await generateFingerprint(installDir, existingFiles);
-
-    // Step 7: Generate keys and sign (unless skipped)
+    // Step 6+7: Generate keys and attest (fingerprint + validate + sign)
     if (!options.skipSign) {
-      await generateKeysAndSign(installDir, options, detection);
+      await generateKeysAndAttest(installDir, options, detection, existingFiles);
+    } else if (existingFiles.shouldUpdateFingerprint) {
+      // If signing is skipped but fingerprint update is needed, run fingerprint only
+      await generateFingerprint(installDir, existingFiles);
     }
 
     // Step 8: Update .gitignore
@@ -521,12 +521,14 @@ async function generateFingerprint(
 }
 
 /**
- * Generate cryptographic keys and sign credential
+ * Generate cryptographic keys and attest credential
+ * Uses `beltic attest` to fingerprint, validate, and sign in one step.
  */
-async function generateKeysAndSign(
+async function generateKeysAndAttest(
   installDir: string,
   options: WizardOptions,
   detection: DetectionResult,
+  existing: ExistingFiles,
 ): Promise<void> {
   const agentName = detection.agentName;
 
@@ -579,30 +581,31 @@ async function generateKeysAndSign(
     debug('Manifest analysis error:', error);
   }
 
-  // Sign the credential
-  const signSpinner = clack.spinner();
-  signSpinner.start('Signing agent credential...');
+  // Attest: fingerprint + validate + sign in one step
+  const attestSpinner = clack.spinner();
+  attestSpinner.start('Attesting agent credential (fingerprint + validate + sign)...');
 
   // Generate placeholder DIDs for self-signing
   const issuerDid = PLACEHOLDER_ISSUER_DID;
   const subjectDid = generatePlaceholderSubjectDid(agentName);
 
-  const signResult = await runBelticSign(installDir, {
+  const attestResult = await runBelticAttest(installDir, {
     key: privateKey,
-    payload: manifest,
+    credential: manifest,
     kid: 'agent-key',
     out: 'agent-credential.jwt',
-    skipValidation: options.skipValidation,
+    skipSchema: options.skipValidation,
+    skipFingerprint: !existing.shouldUpdateFingerprint,
     issuer: issuerDid,
     subject: subjectDid,
   });
 
-  if (!signResult.success) {
-    signSpinner.stop('Failed to sign credential');
-    clack.log.error(`Error: ${signResult.stderr}`);
+  if (!attestResult.success) {
+    attestSpinner.stop('Failed to attest credential');
+    clack.log.error(`Error: ${attestResult.stderr}`);
 
     // Suggest using --skip-validation for local testing
-    if (signResult.stderr.includes('schema validation failed')) {
+    if (attestResult.stderr.includes('schema validation failed')) {
       clack.log.warn(
         chalk.yellow(
           '\nTip: For local testing, you can use --skip-validation to skip schema validation.',
@@ -610,10 +613,10 @@ async function generateKeysAndSign(
       );
     }
 
-    throw new Error('beltic sign failed');
+    throw new Error('beltic attest failed');
   }
 
-  signSpinner.stop('Agent credential signed');
+  attestSpinner.stop('Agent credential attested');
   clack.log.info(chalk.dim(`Issuer: ${issuerDid}`));
   clack.log.info(chalk.dim(`Subject: ${subjectDid}`));
 }
@@ -674,7 +677,7 @@ function printSummary(
 
   if (!options.skipSign) {
     nextSteps.push(
-      'After code changes, run: beltic fingerprint && beltic sign',
+      'After code changes, run: beltic attest --key .beltic/*-private.pem',
       'To verify: beltic verify --key .beltic/*-public.pem --token agent-credential.jwt',
     );
   } else {

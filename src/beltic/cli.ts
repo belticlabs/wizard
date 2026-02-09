@@ -282,6 +282,61 @@ export async function runBelticSign(
 }
 
 /**
+ * Run beltic attest command (fingerprint + validate + sign in one step)
+ */
+export async function runBelticAttest(
+  cwd: string,
+  options: {
+    key: string;
+    credential?: string;
+    config?: string;
+    alg?: string;
+    kid?: string;
+    out?: string;
+    issuer?: string;
+    subject?: string;
+    skipSchema?: boolean;
+    skipFingerprint?: boolean;
+    dryRun?: boolean;
+  },
+): Promise<BelticCommandResult> {
+  const args: string[] = ['--key', options.key];
+
+  if (options.credential) {
+    args.push('--credential', options.credential);
+  }
+  if (options.config) {
+    args.push('--config', options.config);
+  }
+  if (options.alg) {
+    args.push('--alg', options.alg);
+  }
+  if (options.kid) {
+    args.push('--kid', options.kid);
+  }
+  if (options.out) {
+    args.push('--out', options.out);
+  }
+  if (options.issuer) {
+    args.push('--issuer', options.issuer);
+  }
+  if (options.subject) {
+    args.push('--subject', options.subject);
+  }
+  if (options.skipSchema) {
+    args.push('--skip-schema');
+  }
+  if (options.skipFingerprint) {
+    args.push('--skip-fingerprint');
+  }
+  if (options.dryRun) {
+    args.push('--dry-run');
+  }
+
+  return runBelticCommand('attest', args, cwd);
+}
+
+/**
  * Run beltic verify command
  */
 export async function runBelticVerify(

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refactored signing workflow to use `beltic attest` instead of separate `beltic fingerprint` + `beltic sign` steps
+- Next-steps guidance now recommends `beltic attest` for post-code-change re-signing
+- Made `PLACEHOLDER_ISSUER_DID` configurable via `WIZARD_ISSUER_DID` environment variable
+- Updated default issuer DID from `did:web:beltic.dev:wizard:self-attested` to `did:web:kya.beltic.app:wizard:self-attested`
+
 ### Added
 - Local-only mode (`--local` / `--offline` flag) to create credentials without authentication
   - When user declines auth prompt, they are offered the option to continue in local mode

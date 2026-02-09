@@ -76,7 +76,7 @@ export const WIZARD_INTERACTION_EVENT_NAME = 'beltic wizard interaction';
  *
  * For now, this placeholder allows local testing and development.
  */
-export const PLACEHOLDER_ISSUER_DID = 'did:web:beltic.dev:wizard:self-attested';
+export const PLACEHOLDER_ISSUER_DID = process.env.WIZARD_ISSUER_DID ?? 'did:web:kya.beltic.app:wizard:self-attested';
 
 /**
  * Generate a placeholder subject DID for the agent.
