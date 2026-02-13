@@ -41,7 +41,7 @@ export async function analyzeAndPatchManifest(
   }
 
   log('Reading existing manifest...');
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const manifest = readJsonRecord(manifestPath, 'agent-manifest.json');
 
   // Get source files for analysis
   log('Discovering source files...');
@@ -158,6 +158,355 @@ interface ManifestAnalysis {
   kybTierJustification?: string;
 }
 
+type DeploymentEnvironment = {
+  type: string;
+  cloudProvider: string;
+  primaryRegion?: string;
+  complianceNotes?: string;
+};
+
+const MODEL_TOKEN_PATTERN = /^[A-Za-z0-9._:/+-]+$/;
+
+const KYB_TIER_VALUES = new Set([
+  'tier_0',
+  'tier_1',
+  'tier_2',
+  'tier_3',
+  'tier_4',
+]);
+
+const DEPLOYMENT_TYPE_VALUES = new Set([
+  'cloud_managed',
+  'cloud_self_managed',
+  'on_premises',
+  'hybrid',
+  'edge',
+]);
+
+const CLOUD_PROVIDER_VALUES = new Set([
+  'aws',
+  'gcp',
+  'azure',
+  'oracle',
+  'ibm',
+  'alibaba',
+  'other',
+  'none',
+]);
+
+const DATA_ENCRYPTION_VALUES = new Set([
+  'AES-128-at-rest',
+  'AES-256-at-rest',
+  'AES-128-GCM',
+  'AES-256-GCM',
+  'TLS-1.2-in-transit',
+  'TLS-1.3-in-transit',
+  'ChaCha20-Poly1305',
+  'RSA-2048',
+  'RSA-4096',
+  'ECDHE',
+  'other',
+]);
+
+const DATA_ENCRYPTION_ALIASES: Record<string, string> = {
+  aes128atrest: 'AES-128-at-rest',
+  aes256atrest: 'AES-256-at-rest',
+  aes128gcm: 'AES-128-GCM',
+  aes256gcm: 'AES-256-GCM',
+  aes256gcmatrest: 'AES-256-at-rest',
+  tls12intransit: 'TLS-1.2-in-transit',
+  tls13intransit: 'TLS-1.3-in-transit',
+  chacha20poly1305: 'ChaCha20-Poly1305',
+  rsa2048: 'RSA-2048',
+  rsa4096: 'RSA-4096',
+  rsa2048forkeyexchange: 'RSA-2048',
+  ecdhe: 'ECDHE',
+};
+
+const DID_IDENTIFIER_PATTERN = /^did:(web|key|ion|pkh|ethr):[a-zA-Z0-9._%-]+$/;
+const VERIFICATION_METHOD_PATTERN =
+  /^did:(web|key|ion|pkh|ethr):[a-zA-Z0-9._%-]+#[a-zA-Z0-9_-]+$/;
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readJsonRecord(
+  filePath: string,
+  context: string,
+): Record<string, unknown> {
+  const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as unknown;
+  const record = asRecord(parsed);
+  if (!record) {
+    throw new Error(`${context} must be a JSON object`);
+  }
+  return record;
+}
+
+function normalizeModelToken(value: string): string {
+  return value.trim();
+}
+
+function normalizeToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+function normalizeModelProvider(value: string): string {
+  const normalized = normalizeModelToken(value);
+  if (!normalized) {
+    return 'other';
+  }
+  return MODEL_TOKEN_PATTERN.test(normalized) ? normalized : 'other';
+}
+
+function normalizeModelFamily(value: string): string {
+  const normalized = normalizeModelToken(value);
+  if (!normalized) {
+    return 'other';
+  }
+  return MODEL_TOKEN_PATTERN.test(normalized) ? normalized : 'other';
+}
+
+function normalizeKybTier(value: string): string | undefined {
+  const normalized = normalizeToken(value).replace(/^tier-?/, 'tier_');
+  if (KYB_TIER_VALUES.has(normalized)) {
+    return normalized;
+  }
+  return undefined;
+}
+
+function normalizeDataEncryptionStandards(
+  values: string[],
+): string[] | undefined {
+  const normalized = new Set<string>();
+  for (const value of values) {
+    const direct = value.trim();
+    if (DATA_ENCRYPTION_VALUES.has(direct)) {
+      normalized.add(direct);
+      continue;
+    }
+
+    const key = value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const mapped = DATA_ENCRYPTION_ALIASES[key];
+    if (mapped) {
+      normalized.add(mapped);
+    }
+  }
+
+  if (normalized.size === 0) {
+    return ['other'];
+  }
+  return [...normalized];
+}
+
+function normalizeDeploymentEnvironment(
+  value: unknown,
+): DeploymentEnvironment | undefined {
+  const obj = asRecord(value);
+  if (!obj) {
+    return undefined;
+  }
+
+  const rawType = typeof obj.type === 'string' ? normalizeToken(obj.type) : '';
+  const rawCloudProvider =
+    typeof obj.cloudProvider === 'string'
+      ? normalizeToken(obj.cloudProvider)
+      : '';
+  const rawDescription =
+    typeof obj.description === 'string' ? obj.description : undefined;
+
+  const typeAliases: Record<string, string> = {
+    development: 'cloud_managed',
+    staging: 'cloud_managed',
+    production: 'cloud_managed',
+    cloud: 'cloud_managed',
+    cloudmanaged: 'cloud_managed',
+    'cloud-self-managed': 'cloud_self_managed',
+    cloudselfmanaged: 'cloud_self_managed',
+    onpremises: 'on_premises',
+    'on-premises': 'on_premises',
+  };
+
+  const providerAliases: Record<string, string> = {
+    amazon: 'aws',
+    bedrock: 'aws',
+    google: 'gcp',
+    gcp: 'gcp',
+    azure: 'azure',
+    msft: 'azure',
+  };
+
+  const mappedType = typeAliases[rawType] ?? rawType;
+  const mappedProvider =
+    providerAliases[rawCloudProvider] ?? rawCloudProvider ?? '';
+
+  if (!DEPLOYMENT_TYPE_VALUES.has(mappedType)) {
+    if (rawDescription) {
+      return {
+        type: 'cloud_managed',
+        cloudProvider: 'other',
+        complianceNotes: rawDescription.slice(0, 500),
+      };
+    }
+    return undefined;
+  }
+
+  const cloudProvider = CLOUD_PROVIDER_VALUES.has(mappedProvider)
+    ? mappedProvider
+    : 'other';
+
+  const region =
+    typeof obj.primaryRegion === 'string' &&
+    /^[A-Z]{2}$/.test(obj.primaryRegion)
+      ? obj.primaryRegion
+      : undefined;
+
+  const notes =
+    typeof obj.complianceNotes === 'string'
+      ? obj.complianceNotes
+      : rawDescription;
+
+  const result: DeploymentEnvironment = {
+    type: mappedType,
+    cloudProvider,
+  };
+
+  if (region) {
+    result.primaryRegion = region;
+  }
+  if (notes) {
+    result.complianceNotes = notes.slice(0, 500);
+  }
+
+  return result;
+}
+
+function normalizeManifestForSchemaCompatibility(
+  manifest: Record<string, unknown>,
+): Record<string, unknown> {
+  const result = { ...manifest };
+
+  // Clean up invalid fields that are not in the schema.
+  const fieldsToRemove = [
+    '_metadata',
+    'fingerprintMetadata',
+    'incidentResponseSlo', // wrong case
+    'manifestRevision',
+    'manifestSchemaVersion',
+    'deploymentContext', // not in schema
+    'subjectDid', // not in schema (subject info is in issuerDid context)
+  ];
+  for (const field of fieldsToRemove) {
+    if (field in result) {
+      delete result[field];
+    }
+  }
+
+  if (
+    typeof result.issuerDid !== 'string' ||
+    !DID_IDENTIFIER_PATTERN.test(result.issuerDid)
+  ) {
+    result.issuerDid = PLACEHOLDER_ISSUER_DID;
+  }
+
+  if (
+    typeof result.primaryModelProvider !== 'string' ||
+    result.primaryModelProvider.trim().length === 0
+  ) {
+    result.primaryModelProvider = 'other';
+  } else {
+    result.primaryModelProvider = normalizeModelProvider(
+      result.primaryModelProvider,
+    );
+  }
+
+  if (
+    typeof result.primaryModelFamily !== 'string' ||
+    result.primaryModelFamily.trim().length === 0
+  ) {
+    result.primaryModelFamily = 'other';
+  } else {
+    result.primaryModelFamily = normalizeModelFamily(result.primaryModelFamily);
+  }
+
+  if (typeof result.kybTierRequired === 'string') {
+    result.kybTierRequired =
+      normalizeKybTier(result.kybTierRequired) ?? 'tier_0';
+  }
+
+  if (Array.isArray(result.dataEncryptionStandards)) {
+    result.dataEncryptionStandards = normalizeDataEncryptionStandards(
+      result.dataEncryptionStandards.filter(
+        (v): v is string => typeof v === 'string',
+      ),
+    );
+  } else if (!result.dataEncryptionStandards) {
+    result.dataEncryptionStandards = ['other'];
+  }
+
+  const deployment = normalizeDeploymentEnvironment(
+    result.deploymentEnvironment,
+  );
+  if (deployment) {
+    result.deploymentEnvironment = deployment;
+  } else {
+    result.deploymentEnvironment = {
+      type: 'cloud_managed',
+      cloudProvider: 'other',
+    };
+  }
+
+  if (
+    Array.isArray(result.complianceCertifications) &&
+    result.complianceCertifications.length === 0
+  ) {
+    delete result.complianceCertifications;
+  }
+
+  if (
+    typeof result.systemConfigFingerprint === 'string' &&
+    result.systemConfigFingerprint.startsWith('sha256:')
+  ) {
+    result.systemConfigFingerprint = result.systemConfigFingerprint.replace(
+      'sha256:',
+      '',
+    );
+  }
+
+  const issuerDid = result.issuerDid as string;
+  if (
+    typeof result.verificationMethod !== 'string' ||
+    !VERIFICATION_METHOD_PATTERN.test(result.verificationMethod)
+  ) {
+    result.verificationMethod = `${issuerDid}#key-1`;
+  }
+
+  const proof = asRecord(result.proof);
+  if (!proof) {
+    result.proof = {
+      type: 'Ed25519Signature2020',
+      created: new Date().toISOString(),
+      proofPurpose: 'assertionMethod',
+      verificationMethod: `${issuerDid}#key-1`,
+      proofValue: 'placeholder-will-be-replaced-during-signing',
+    };
+  } else if (
+    typeof proof.verificationMethod !== 'string' ||
+    !VERIFICATION_METHOD_PATTERN.test(proof.verificationMethod)
+  ) {
+    proof.verificationMethod = `${issuerDid}#key-1`;
+    result.proof = proof;
+  }
+
+  return result;
+}
+
 /**
  * Use LLM to analyze codebase and extract manifest values
  */
@@ -196,8 +545,8 @@ Analyze the code and provide accurate values for the agent manifest. Return a JS
   "agentDescription": "A clear 1-2 sentence description of what this agent does",
   "agentVersion": "Version string if found in code",
   
-  "primaryModelProvider": "One of: anthropic, openai, google, meta, mistral, cohere, amazon, microsoft, huggingface, self_hosted, other",
-  "primaryModelFamily": "One of: claude-3-opus, claude-3-sonnet, claude-3-haiku, claude-3.5-sonnet, claude-4, gpt-4, gpt-4-turbo, gpt-4o, gpt-4o-mini, gemini-pro, gemini-ultra, gemini-1.5, llama-3, llama-3.1, mistral-large, mistral-medium, command-r, command-r-plus, other",
+  "primaryModelProvider": "Free-form provider string from the codebase (for example: openai, anthropic, openrouter, xai)",
+  "primaryModelFamily": "Free-form model family/id string from the codebase (for example: gpt-4o, claude-3.5-sonnet, qwen-2.5-72b-instruct)",
   
   "tools": [
     {
@@ -308,16 +657,25 @@ function mergeAnalysisIntoManifest(
     result.agentVersion = analysis.agentVersion;
   }
   if (analysis.primaryModelProvider) {
-    result.primaryModelProvider = analysis.primaryModelProvider;
+    result.primaryModelProvider = normalizeModelProvider(
+      analysis.primaryModelProvider,
+    );
   }
   if (analysis.primaryModelFamily) {
-    result.primaryModelFamily = analysis.primaryModelFamily;
+    result.primaryModelFamily = normalizeModelFamily(
+      analysis.primaryModelFamily,
+    );
   }
   if (analysis.tools && analysis.tools.length > 0) {
     result.tools = analysis.tools;
   }
   if (analysis.dataEncryptionStandards) {
-    result.dataEncryptionStandards = analysis.dataEncryptionStandards;
+    const normalizedDataEncryption = normalizeDataEncryptionStandards(
+      analysis.dataEncryptionStandards,
+    );
+    if (normalizedDataEncryption) {
+      result.dataEncryptionStandards = normalizedDataEncryption;
+    }
   }
   if (analysis.dataRetentionPolicy) {
     result.dataRetentionPolicy = analysis.dataRetentionPolicy;
@@ -326,7 +684,12 @@ function mergeAnalysisIntoManifest(
     result.dataHandlingPractices = analysis.dataHandlingPractices;
   }
   if (analysis.deploymentEnvironment) {
-    result.deploymentEnvironment = analysis.deploymentEnvironment;
+    const normalizedDeployment = normalizeDeploymentEnvironment(
+      analysis.deploymentEnvironment,
+    );
+    if (normalizedDeployment) {
+      result.deploymentEnvironment = normalizedDeployment;
+    }
   }
   if (analysis.authenticationMethods) {
     result.authenticationMethods = analysis.authenticationMethods;
@@ -335,7 +698,10 @@ function mergeAnalysisIntoManifest(
     result.auditLogging = analysis.auditLogging;
   }
   if (analysis.kybTierRequired) {
-    result.kybTierRequired = analysis.kybTierRequired;
+    const normalizedKybTier = normalizeKybTier(analysis.kybTierRequired);
+    if (normalizedKybTier) {
+      result.kybTierRequired = normalizedKybTier;
+    }
   }
   if (analysis.kybTierJustification) {
     result.kybTierJustification = analysis.kybTierJustification;
@@ -432,39 +798,7 @@ function mergeAnalysisIntoManifest(
     };
   }
 
-  // Add required complianceCertifications field
-  if (!result.complianceCertifications) {
-    result.complianceCertifications = [];
-  }
-
-  // Clean up invalid fields that are not in the schema
-  const fieldsToRemove = [
-    '_metadata',
-    'fingerprintMetadata',
-    'incidentResponseSlo', // wrong case
-    'manifestRevision',
-    'manifestSchemaVersion',
-    'deploymentContext', // not in schema
-    'subjectDid', // not in schema (subject info is in issuerDid context)
-  ];
-  for (const field of fieldsToRemove) {
-    if (field in result) {
-      delete result[field];
-    }
-  }
-
-  // Fix systemConfigFingerprint format
-  if (
-    result.systemConfigFingerprint &&
-    typeof result.systemConfigFingerprint === 'string'
-  ) {
-    result.systemConfigFingerprint = result.systemConfigFingerprint.replace(
-      'sha256:',
-      '',
-    );
-  }
-
-  return result;
+  return normalizeManifestForSchemaCompatibility(result);
 }
 
 /**
@@ -480,9 +814,27 @@ export function patchManifestWithPlaceholders(
     throw new Error('agent-manifest.json not found');
   }
 
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const manifest = readJsonRecord(manifestPath, 'agent-manifest.json');
   const patched = mergeAnalysisIntoManifest(manifest, {}, agentName);
   fs.writeFileSync(manifestPath, JSON.stringify(patched, null, 2), 'utf-8');
+}
+
+/**
+ * Re-apply schema compatibility normalization to an existing manifest.
+ * Used after commands like `beltic fingerprint` that may add legacy/extra fields.
+ */
+export function sanitizeManifestForSchemaCompatibility(
+  installDir: string,
+): void {
+  const manifestPath = path.join(installDir, 'agent-manifest.json');
+
+  if (!fs.existsSync(manifestPath)) {
+    return;
+  }
+
+  const manifest = readJsonRecord(manifestPath, 'agent-manifest.json');
+  const normalized = normalizeManifestForSchemaCompatibility(manifest);
+  fs.writeFileSync(manifestPath, JSON.stringify(normalized, null, 2), 'utf-8');
 }
 
 /**
@@ -495,7 +847,7 @@ export function manifestHasCredentialFields(installDir: string): boolean {
     return false;
   }
 
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const manifest = readJsonRecord(manifestPath, 'agent-manifest.json');
   const requiredFields = ['credentialId', 'issuerDid', 'schemaVersion'];
 
   return requiredFields.every((field) => field in manifest);
